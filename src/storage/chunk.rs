@@ -31,7 +31,8 @@ pub async fn split(file_path: PathBuf, destination_dir: PathBuf) -> Result<Chunk
 
 
         let mut data = vec![0; buf_size];
-        let size = file.read(&mut data).await?;
+        // We should use read_exact here instead of read, because Tokio use an arbitrary buffer size of 16kb
+        let size = file.read_exact(&mut data).await?;
 
         if size == 0 {
             break;

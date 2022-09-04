@@ -1,12 +1,31 @@
 [package]
 name = "doc-storage"
 version = "0.1.0"
+authors = ["Yggdrasil80 <louisdechorivit@gmail.com>"]
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "Self-hosted file and document storage service"
+readme = "README.md"
+repository = "https://github.com/Yggdrasil80/doc-storage"
+license = "GNU General Public License v3.0"
+keywords = ["doc-storage", "document", "storage", "file", "self-hosted"]
 
 [dependencies]
-tokio = { version = "1", features = ["full"] }
-serde = { version = "1", features = ["derive"] }
+redis = "0.21.6"
 serde_json = "1"
+actix-web = "4"
 md-5 = "0.10.4"
+
+[dependencies.tokio]
+version = "1"
+features = ["full"]
+
+[dependencies.serde]
+version = "1"
+features = ["derive"]
+
+[dependencies.uuid]
+version = "1"
+features = [
+    "v4",
+    "serde",
+]

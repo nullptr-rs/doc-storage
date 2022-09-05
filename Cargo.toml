@@ -11,20 +11,20 @@ keywords = ["doc-storage", "document", "storage", "file", "self-hosted"]
 
 [dependencies]
 redis = "0.21.6"
-serde_json = "1"
-actix-web = "4"
+serde_json = "1.0.85"
+actix-web = "4.1.0"
 md-5 = "0.10.4"
 
 [dependencies.tokio]
-version = "1"
+version = "1.21.0"
 features = ["full"]
 
 [dependencies.serde]
-version = "1"
+version = "1.0.144"
 features = ["derive"]
 
 [dependencies.uuid]
-version = "1"
+version = "1.1.2"
 features = [
     "v4",
     "serde",

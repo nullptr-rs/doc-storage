@@ -1,0 +1,22 @@
+name: Github CI - Development
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: "Set up Rust"
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: "Build project with Cargo"
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --verbose --release --all-features

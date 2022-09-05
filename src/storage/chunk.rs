@@ -24,9 +24,10 @@ pub async fn split(file_path: PathBuf, destination_dir: PathBuf) -> Result<Chunk
     let mut offset = 0;
 
     loop {
-        let buf_size = match file_len - offset < CHUNK_SIZE as u64 {
-            true => (file_len - offset) as usize,
-            false => CHUNK_SIZE,
+        let buf_size = if file_len - offset < CHUNK_SIZE as u64 {
+            (file_len - offset) as usize
+        } else {
+            CHUNK_SIZE
         };
 
 

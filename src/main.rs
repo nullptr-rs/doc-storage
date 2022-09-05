@@ -1,27 +1,56 @@
+use doc_storage::storage::chunk;
 use std::error::Error;
 use std::path::PathBuf;
 use std::time::SystemTime;
-use doc_storage::storage::chunk;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>>{
+async fn main() -> Result<(), Box<dyn Error>> {
     println!("Start benchmark...");
-    let start = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
+    let start_split = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
 
-    chunk::split(PathBuf::from("Camp 2021 Troupe Vè Versailles.mp4"), PathBuf::from("Camp 2021 Troupe Vè Versailles")).await.unwrap();
+    chunk::split(
+        PathBuf::from("Open Ocean 10 Hours of Relaxing Oceanscapes  BBC Earth.mp4"),
+        PathBuf::from("Open Ocean 10 Hours of Relaxing Oceanscapes  BBC Earth"),
+    )
+    .await
+    .unwrap();
 
-    println!();
+    println!(
+        "Finished in {}ms",
+        SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_millis()
+            - start_split
+    );
     println!("--------------------------------------------------------------------------------");
-    println!();
+    println!("Start benchmark...");
 
-    chunk::combine(PathBuf::from("Camp 2021 Troupe Vè Versailles").join("manifest.json"), PathBuf::from("Camp 2021 Troupe Vè Versailles - Combined.mp4")).await.unwrap();
+    let start_combine = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
 
-    println!("End benchmark...");
-    let end = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
+    chunk::combine(
+        PathBuf::from("Open Ocean 10 Hours of Relaxing Oceanscapes  BBC Earth")
+            .join("manifest.json"),
+        PathBuf::from("Open Ocean 10 Hours of Relaxing Oceanscapes  BBC Earth - Combined.mp4"),
+    )
+    .await
+    .unwrap();
 
-    println!("Time: {} ms", end - start);
+    println!(
+        "Finished in {}ms",
+        SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_millis()
+            - start_combine
+    );
     Ok(())
 
-    //https://github.com/djc/edit-chunks/blob/master/src/main.rs
     //https://lib.rs/crates/bita
 }

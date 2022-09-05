@@ -1,11 +1,12 @@
+use crate::ternary_as;
+use md5::{Digest, Md5};
+use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::path::PathBuf;
-use md5::{Md5, Digest};
 use tokio::fs::{self, File};
-use serde::{Serialize, Deserialize};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-pub const CHUNK_SIZE: usize = 5 * 1024 * 1024;
+pub const CHUNK_SIZE: u64 = 5 * 1024 * 1024;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChunkedFile {
@@ -15,20 +16,27 @@ pub struct ChunkedFile {
     pub chunks: Vec<String>,
 }
 
-pub async fn split(file_path: PathBuf, destination_dir: PathBuf) -> Result<ChunkedFile, Box<dyn Error>> {
+pub async fn split(
+    file_path: PathBuf,
+    destination_dir: PathBuf,
+) -> Result<ChunkedFile, Box<dyn Error>> {
     fs::create_dir_all(&destination_dir).await?;
 
-    let mut chunked_file = ChunkedFile::new(file_path.file_stem().unwrap().to_str().unwrap(), fs::canonicalize(&destination_dir).await?);
+    let mut chunked_file = ChunkedFile::new(
+        file_path.file_stem().unwrap().to_str().unwrap(),
+        fs::canonicalize(&destination_dir).await?,
+    );
     let mut file = File::open(&file_path).await?;
     let file_len = file.metadata().await?.len();
     let mut offset = 0;
 
     loop {
-        let buf_size = match file_len - offset < CHUNK_SIZE as u64 {
-            true => (file_len - offset) as usize,
-            false => CHUNK_SIZE,
-        };
-
+        let buf_size = ternary_as!(
+            file_len - offset < CHUNK_SIZE,
+            file_len - offset,
+            CHUNK_SIZE,
+            usize
+        );
 
         let mut data = vec![0; buf_size];
         // We should use read_exact here instead of read, because Tokio use an arbitrary buffer size of 16kb
@@ -42,7 +50,12 @@ pub async fn split(file_path: PathBuf, destination_dir: PathBuf) -> Result<Chunk
         hasher.update(&data);
         let md5 = format!("{:x}", hasher.finalize());
 
-        let name = format!("{}-{}-{}.chunk", chunked_file.chunk_count, md5.clone(), size);
+        let name = format!(
+            "{}-{}-{}.chunk",
+            chunked_file.chunk_count,
+            md5.clone(),
+            size
+        );
         let path = destination_dir.join(&name);
 
         let mut chunk_file = File::create(&path).await?;
@@ -54,13 +67,23 @@ pub async fn split(file_path: PathBuf, destination_dir: PathBuf) -> Result<Chunk
     }
 
     let mut manifest_file = File::create(destination_dir.join("manifest.json")).await?;
-    manifest_file.write_all(serde_json::to_string(&chunked_file)?.as_bytes()).await?;
+    manifest_file
+        .write_all(serde_json::to_string(&chunked_file)?.as_bytes())
+        .await?;
 
-    println!("Successfully chunked file '{}' ({}) into {} chunks", &chunked_file.name, &chunked_file.dir.to_str().unwrap(), &chunked_file.chunk_count);
+    println!(
+        "Successfully chunked file '{}' ({}) into {} chunks",
+        &chunked_file.name,
+        &chunked_file.dir.to_str().unwrap(),
+        &chunked_file.chunk_count
+    );
     Ok(chunked_file.clone())
 }
 
-pub async fn combine(manifest_path: PathBuf, destination_file: PathBuf) -> Result<(ChunkedFile, fs::File), Box<dyn Error>> {
+pub async fn combine(
+    manifest_path: PathBuf,
+    destination_file: PathBuf,
+) -> Result<(ChunkedFile, File), Box<dyn Error>> {
     // Manifest file should be converted to standard library file, because a Tokio file can't be read by serde_json
     let manifest_file = File::open(&manifest_path).await?;
     let chunked_file: ChunkedFile = serde_json::from_reader(manifest_file.into_std().await)?;
@@ -111,7 +134,10 @@ pub async fn combine(manifest_path: PathBuf, destination_file: PathBuf) -> Resul
         return Err("Chunk count does not match expected chunk count".into());
     }
 
-    println!("Successfully combined {} chunks into file '{}'", &chunked_file.chunk_count, &chunked_file.name);
+    println!(
+        "Successfully combined {} chunks into file '{}'",
+        &chunked_file.chunk_count, &chunked_file.name
+    );
     Ok((chunked_file, file))
 }
 

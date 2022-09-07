@@ -8,7 +8,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 pub const CHUNK_SIZE: u64 = 5 * 1024 * 1024;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ChunkedFile {
     pub name: String,
     pub dir: PathBuf,
@@ -19,7 +19,7 @@ pub struct ChunkedFile {
 pub async fn split(
     file_path: PathBuf,
     destination_dir: PathBuf,
-) -> Result<ChunkedFile, Box<dyn Error>> {
+) -> Result<Box<ChunkedFile>, Box<dyn Error>> {
     fs::create_dir_all(&destination_dir).await?;
 
     let mut chunked_file = ChunkedFile::new(
@@ -77,7 +77,7 @@ pub async fn split(
         &chunked_file.dir.to_str().unwrap(),
         &chunked_file.chunk_count
     );
-    Ok(chunked_file.clone())
+    Ok(chunked_file.into())
 }
 
 pub async fn combine(

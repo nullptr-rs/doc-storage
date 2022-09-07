@@ -12,8 +12,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .as_millis();
 
     chunk::split(
-        PathBuf::from("Open Ocean 10 Hours of Relaxing Oceanscapes  BBC Earth.mp4"),
-        PathBuf::from("Open Ocean 10 Hours of Relaxing Oceanscapes  BBC Earth"),
+        PathBuf::from("Cargo.lock"),
+        PathBuf::from("Cargo"),
     )
     .await
     .unwrap();
@@ -35,9 +35,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .as_millis();
 
     chunk::combine(
-        PathBuf::from("Open Ocean 10 Hours of Relaxing Oceanscapes  BBC Earth")
+        PathBuf::from("Cargo")
             .join("manifest.json"),
-        PathBuf::from("Open Ocean 10 Hours of Relaxing Oceanscapes  BBC Earth - Combined.mp4"),
+        PathBuf::from("Cargo - Combined.lock"),
     )
     .await
     .unwrap();
@@ -54,4 +54,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     //https://lib.rs/crates/bita
     //https://discord.com/channels/648981252988338213/935847071540469820/1016443689679200286
+    //TODO Cache dependencies in Github CI
+    //TODO Add SHA256 checksum to chunks
 }

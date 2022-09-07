@@ -19,4 +19,4 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --all-features
+          args: --all-features --color=always --message-format=json-diagnostic-rendered-ansi --package doc-storage --bin doc-storage --release

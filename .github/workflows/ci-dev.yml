@@ -1,6 +1,6 @@
 name: Github CI - Development
 
-on: [push, pull_request]
+on: push
 
 jobs:
   build:
@@ -36,15 +36,18 @@ jobs:
         uses: docker/setup-qemu-action@v2
       - name: "Set up Docker Buildx"
         uses: docker/setup-buildx-action@v2
-      - name: "Login to Docker GitHub Container Registry"
+      - name: "Login to GitHub Container Registry"
         uses: docker/login-action@v2.0.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build and push Docker images
         uses: docker/build-push-action@v3.1.1
         with:
           push: true
           tags: ghcr.io/yggdrasil80/doc-storage:develop
           platforms:  linux/amd64,linux/arm64/v8
+          cache-from: type=registry,ref=ghcr.io/yggdrasil80/doc-storage:develop
+          cache-to: type=inline

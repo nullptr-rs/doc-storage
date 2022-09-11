@@ -15,8 +15,20 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: "Cache Cargo dependencies"
+        uses: Swatinem/rust-cache@v2
+
+      - name: "Format code"
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
       - name: "Build project with Cargo"
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --all-features --color=always --message-format=json-diagnostic-rendered-ansi --package doc-storage --bin doc-storage --release
+          args: --color=always --message-format=json-diagnostic-rendered-ansi --package doc-storage --bin doc-storage --release

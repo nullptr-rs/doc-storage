@@ -57,7 +57,8 @@ jobs:
         uses: docker/build-push-action@v3.1.1
         with:
           push: true
+          context: .
           tags: ghcr.io/yggdrasil80/doc-storage:develop
           platforms: linux/amd64,linux/arm64/v8
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,type=local,src=/tmp/.buildx-cache,mode=max,type=registry,ref=ghcr.io/yggdrasil80/doc-storage:develop
+          cache-to: type=gha,mode=max,type=local,dest=/tmp/.buildx-cache,mode=max,type=registry,ref=ghcr.io/yggdrasil80/doc-storage:develop

@@ -3,7 +3,7 @@ FROM rust:alpine3.16 as builder
 LABEL maintainer="Yggdrasil80 <louisdechorivit@gmail.com>"
 
 WORKDIR /usr/src/app
-RUN apk add --no-cache musl-dev zlib-dev
+RUN apk apk upgrade --update-cache --available && apk add musl-dev zlib-dev openssl-dev && rm -rf /var/cache/apk/*
 
 COPY . .
 RUN cargo build --release

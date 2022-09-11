@@ -42,19 +42,10 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: "Build and push Docker cache image"
-        uses: docker/build-push-action@v3.1.1
-        with:
-          push: true
-          target: builder
-          tags: ghcr.io/yggdrasil80/doc-storage:builder
-          cache-from: type=registry,ref=ghcr.io/yggdrasil80/doc-storage:builder
-          cache-to: type=inline
       - name: "Build and push Docker image"
         uses: docker/build-push-action@v3.1.1
         with:
           push: true
           tags: ghcr.io/yggdrasil80/doc-storage:develop
           platforms: linux/amd64,linux/arm64/v8
-          cache-from: type=registry,ref=ghcr.io/yggdrasil80/doc-storage:builder, type=registry,ref=ghcr.io/yggdrasil80/doc-storage:develop
-          cache-to: type=inline
+          cache-from: type=local,src=~/.cargo,src=./target

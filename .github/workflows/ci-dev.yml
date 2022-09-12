@@ -72,10 +72,7 @@ jobs:
             type=gha
             type=local,src=/tmp/.buildx-cache
             type=registry,ref=ghcr.io/yggdrasil80/doc-storage:cache
-          cache-to: |
-            type=gha,mode=max
-            type=local,dest=/tmp/.buildx-cache-new,mode=max
-            type=registry,ref=ghcr.io/yggdrasil80/doc-storage:cache,mode=max
+          cache-to: type=gha,mode=max,type=local,dest=/tmp/.buildx-cache-new,mode=max,type=registry,ref=ghcr.io/yggdrasil80/doc-storage:cache,mode=max
 
       - name: "Move Docker Build cache"
         run: |

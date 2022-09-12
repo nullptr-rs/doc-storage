@@ -53,14 +53,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: "Restore Docker Build Cache"
-        uses: actions/cache@v2
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
-
       - name: "Build and push Docker image"
         uses: docker/build-push-action@v3.1.1
         with:
@@ -70,11 +62,5 @@ jobs:
           platforms: linux/amd64,linux/arm64/v8
           cache-from: |
             type=gha
-            type=local,src=/tmp/.buildx-cache
             type=registry,ref=ghcr.io/yggdrasil80/doc-storage:cache
-          cache-to: type=gha,mode=max,type=local,dest=/tmp/.buildx-cache-new,mode=max,type=registry,ref=ghcr.io/yggdrasil80/doc-storage:cache,mode=max
-
-      - name: "Move Docker Build cache"
-        run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          cache-to: type=gha,mode=max

@@ -1,4 +1,4 @@
-FROM lukemathwalker/cargo-chef:latest-rust-1.59.0 AS chef
+FROM lukemathwalker/cargo-chef:latest-rust-alpine3.16 AS chef
 
 LABEL maintainer="Yggdrasil80 <louisdechorivit@gmail.com>"
 WORKDIR /usr/src/app

@@ -63,4 +63,4 @@ jobs:
           cache-from: |
             type=gha
             type=registry,ref=ghcr.io/yggdrasil80/doc-storage:cache
-          cache-to: type=gha,mode=max
+          cache-to: type=registry,ref=ghcr.io/yggdrasil80/doc-storage:cache,mode=max

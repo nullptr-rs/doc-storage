@@ -9,48 +9,6 @@ use tokio::fs;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    println!("Start benchmark...");
-    let start_split = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_millis();
-
-    /*chunk::split(PathBuf::from("Cargo.lock"), PathBuf::from("Cargo"))
-        .await
-        .unwrap();*/
-
-    println!(
-        "Finished in {}ms",
-        SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_millis()
-            - start_split
-    );
-    println!("--------------------------------------------------------------------------------");
-    println!("Start benchmark...");
-
-    let start_combine = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_millis();
-
-    /*chunk::combine(
-        PathBuf::from("Cargo").join("manifest.json"),
-        PathBuf::from("Cargo - Combined.lock"),
-    )
-    .await
-    .unwrap();*/
-
-    println!(
-        "Finished in {}ms",
-        SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_millis()
-            - start_combine
-    );
-
     /*println!("Connecting to S3...");
 
     env::set_var("S3_BUCKET_NAME", "doc-storage");
@@ -70,6 +28,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     client.client.put_object(put_object_request).await?;
     println!("Uploaded Cargo.lock");*/
 
+    print!("Hello, world!");
     Ok(())
 
     //https://lib.rs/crates/bita

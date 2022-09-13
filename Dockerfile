@@ -18,7 +18,7 @@ RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN cargo build --release --bin doc-storage
 
-FROM --platform=$TARGETPLATFORM alpine:3.16
+FROM --platform=$TARGETPLATFORM alpine:3.16.2 AS runtime
 
 WORKDIR /usr/src/app
 COPY --from=builder /usr/src/app/target/release/doc-storage .

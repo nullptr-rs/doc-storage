@@ -1,14 +1,14 @@
-FROM lukemathwalker/cargo-chef:latest-rust-alpine3.16 AS chef
+FROM --platform=$BUILDPLATFORM lukemathwalker/cargo-chef:latest-rust-alpine3.16 AS chef
 
 LABEL maintainer="Yggdrasil80 <louisdechorivit@gmail.com>"
 WORKDIR /usr/src/app
 
-FROM chef AS planner
+FROM --platform=$BUILDPLATFORM chef AS planner
 
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
-FROM chef AS builder
+FROM --platform=$BUILDPLATFORM chef AS builder
 
 COPY --from=planner /usr/src/app/recipe.json recipe.json
 
@@ -18,7 +18,7 @@ RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN cargo build --release --bin doc-storage
 
-FROM alpine:3.16
+FROM --platform=$TARGETPLATFORM alpine:3.16
 
 WORKDIR /usr/src/app
 COPY --from=builder /usr/src/app/target/release/doc-storage .

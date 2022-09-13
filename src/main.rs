@@ -15,9 +15,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .unwrap()
         .as_millis();
 
-    chunk::split(PathBuf::from("Cargo.lock"), PathBuf::from("Cargo"))
+    /*chunk::split(PathBuf::from("Cargo.lock"), PathBuf::from("Cargo"))
         .await
-        .unwrap();
+        .unwrap();*/
 
     println!(
         "Finished in {}ms",
@@ -35,12 +35,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .unwrap()
         .as_millis();
 
-    chunk::combine(
+    /*chunk::combine(
         PathBuf::from("Cargo").join("manifest.json"),
         PathBuf::from("Cargo - Combined.lock"),
     )
     .await
-    .unwrap();
+    .unwrap();*/
 
     println!(
         "Finished in {}ms",
@@ -51,7 +51,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             - start_combine
     );
 
-    println!("Connecting to S3...");
+    /*println!("Connecting to S3...");
 
     env::set_var("S3_BUCKET_NAME", "doc-storage");
     env::set_var("S3_REGION", "eu-west-2");
@@ -68,7 +68,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         ..Default::default()
     };
     client.client.put_object(put_object_request).await?;
-    println!("Uploaded Cargo.lock");
+    println!("Uploaded Cargo.lock");*/
 
     Ok(())
 

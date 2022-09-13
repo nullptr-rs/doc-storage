@@ -1,6 +1,0 @@
-.git/
-.github
-target/
-.deepsource.toml
-.dockerignore
-.gitignore

@@ -1,6 +1,5 @@
 FROM --platform=$BUILDPLATFORM lukemathwalker/cargo-chef:latest-rust-alpine3.16 AS chef
 
-LABEL maintainer="Yggdrasil80 <louisdechorivit@gmail.com>"
 WORKDIR /usr/src/app
 
 FROM --platform=$BUILDPLATFORM chef AS planner
@@ -21,6 +20,9 @@ COPY . .
 RUN cargo build --release -j $CPU_CORES --package doc-storage --bin doc-storage
 
 FROM --platform=$TARGETPLATFORM alpine:3.16.2 AS runtime
+
+LABEL maintainer="Yggdrasil80 <louisdechorivit@gmail.com>"
+LABEL org.opencontainers.image.description="Doc Storage, your self-hosted file and document storage service"
 
 WORKDIR /usr/src/app
 COPY --from=builder /usr/src/app/target/release/doc-storage .

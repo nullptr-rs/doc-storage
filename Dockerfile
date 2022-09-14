@@ -1,5 +1,3 @@
-ARG CPU_CORES=2
-
 FROM --platform=$BUILDPLATFORM lukemathwalker/cargo-chef:latest-rust-alpine3.16 AS chef
 
 LABEL maintainer="Yggdrasil80 <louisdechorivit@gmail.com>"
@@ -20,7 +18,7 @@ RUN cargo chef cook --release --recipe-path recipe.json
 FROM --platform=$BUILDPLATFORM chef AS builder
 
 COPY --from=cooker . .
-RUN cargo build --release -j ${CPU_CORES} --package doc-storage --bin doc-storage
+RUN cargo build --release --package doc-storage --bin doc-storage
 
 FROM --platform=$TARGETPLATFORM alpine:3.16.2 AS runtime
 

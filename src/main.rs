@@ -1,3 +1,5 @@
+use actix_web::rt::System;
+use actix_web::{App, HttpServer};
 use doc_storage::database::s3;
 use doc_storage::storage::chunk;
 use rusoto_s3::S3;
@@ -5,8 +7,6 @@ use std::env;
 use std::error::Error;
 use std::path::PathBuf;
 use std::time::SystemTime;
-use actix_web::{App, HttpServer};
-use actix_web::rt::System;
 use tokio::fs;
 use tokio::runtime::Builder;
 
@@ -22,15 +22,14 @@ fn main() -> Result<(), Box<dyn Error>> {
             .worker_threads(worker_threads)
             .build()
             .unwrap()
-    }).block_on(async_bootstrap())
+    })
+    .block_on(async_bootstrap())
 }
 
 async fn async_bootstrap() -> Result<(), Box<dyn Error>> {
     print!("Hello, world!");
 
-    HttpServer::new(move || {
-        App::new()
-    })
+    HttpServer::new(move || App::new())
         .bind("127.0.0.1:1109")?
         .run()
         .await?;

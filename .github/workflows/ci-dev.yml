@@ -24,6 +24,9 @@ jobs:
         uses: SimenB/github-actions-cpu-cores@v1
         id: cpu-core-count
 
+      - run: |
+          echo "CPU cores count: ${{ steps.cpu-core-count.outputs.count }}"
+
       - name: "Cache Cargo dependencies"
         uses: Swatinem/rust-cache@v2
 

@@ -24,9 +24,6 @@ jobs:
         uses: SimenB/github-actions-cpu-cores@v1
         id: cpu-core-count
 
-      - run: |
-          echo "CPU cores count: ${{ steps.cpu-core-count.outputs.count }}"
-
       - name: "Cache Cargo dependencies"
         uses: Swatinem/rust-cache@v2
 
@@ -39,7 +36,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release -j ${{ steps.cpu-core-count.outputs.cores }}
+          args: --release -j ${{ steps.cpu-core-count.outputs.count }}
 
   docker:
     needs: build
@@ -74,5 +71,5 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: ghcr.io/yggdrasil80/doc-storage:develop
-          build-args: CPU_CORES=${{ steps.cpu-core-count.outputs.cores }}
+          build-args: CPU_CORES=${{ steps.cpu-core-count.outputs.count }}
           platforms: linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64/v8,linux/ppc64le,linux/s390x

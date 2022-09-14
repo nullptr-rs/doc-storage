@@ -20,7 +20,7 @@ FROM --platform=$BUILDPLATFORM chef AS builder
 ARG CPU_CORES
 
 COPY . .
-COPY --from=cooker /usr/src/app/target target
+COPY --from=cooker . .
 RUN cargo build --release -j $CPU_CORES --package doc-storage --bin doc-storage
 
 FROM --platform=$TARGETPLATFORM alpine:3.16.2 AS runtime

@@ -1,7 +1,6 @@
 use actix_web::rt::System;
 use actix_web::{web, App, HttpServer};
 use std::env;
-use std::error::Error;
 use tokio::runtime::Builder;
 
 fn main() -> std::io::Result<()> {

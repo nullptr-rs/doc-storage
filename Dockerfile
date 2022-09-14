@@ -8,15 +8,19 @@ FROM --platform=$BUILDPLATFORM chef AS planner
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
-FROM --platform=$BUILDPLATFORM chef AS builder
+FROM --platform=$BUILDPLATFORM chef AS cooker
 
 COPY --from=planner /usr/src/app/recipe.json recipe.json
 
 RUN apk upgrade --update-cache --available && apk add musl-dev zlib-dev openssl-dev && rm -rf /var/cache/apk/*
 RUN cargo chef cook --release --recipe-path recipe.json
 
-COPY . .
-RUN cargo build --release --bin doc-storage
+FROM --platform=$BUILDPLATFORM chef AS builder
+
+ARG CPU_CORES
+
+COPY --from=cooker . .
+RUN cargo build --release -j $CPU_CORES --package doc-storage --bin doc-storage
 
 FROM --platform=$TARGETPLATFORM alpine:3.16.2 AS runtime
 

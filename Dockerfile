@@ -17,8 +17,11 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 FROM --platform=$BUILDPLATFORM chef AS builder
 
-COPY --from=cooker . .
-RUN cargo build --release --package doc-storage --bin doc-storage
+ARG CPU_CORES
+
+COPY . .
+COPY --from=cooker /usr/src/app/target target
+RUN cargo build --release -j $CPU_CORES --package doc-storage --bin doc-storage
 
 FROM --platform=$TARGETPLATFORM alpine:3.16.2 AS runtime
 

@@ -1,3 +1,5 @@
+ARG CPU_CORES
+
 FROM --platform=$BUILDPLATFORM lukemathwalker/cargo-chef:latest-rust-alpine3.16 AS chef
 
 LABEL maintainer="Yggdrasil80 <louisdechorivit@gmail.com>"
@@ -16,8 +18,6 @@ RUN apk upgrade --update-cache --available && apk add musl-dev zlib-dev openssl-
 RUN cargo chef cook --release --recipe-path recipe.json
 
 FROM --platform=$BUILDPLATFORM chef AS builder
-
-ARG CPU_CORES
 
 COPY --from=cooker . .
 RUN cargo build --release -j $CPU_CORES --package doc-storage --bin doc-storage

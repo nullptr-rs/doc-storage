@@ -5,32 +5,37 @@ use std::env;
 use std::error::Error;
 use std::path::PathBuf;
 use std::time::SystemTime;
+use actix_web::{App, HttpServer};
+use actix_web::rt::System;
 use tokio::fs;
+use tokio::runtime::Builder;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    /*println!("Connecting to S3...");
+fn main() -> Result<(), Box<dyn Error>> {
+    let worker_threads = env::var("WORKER_THREADS")
+        .unwrap_or_else(|_| "8".to_string())
+        .parse::<usize>()
+        .unwrap();
 
-    env::set_var("S3_BUCKET_NAME", "doc-storage");
-    env::set_var("S3_REGION", "eu-west-2");
-    env::set_var("S3_URL", "http://127.0.0.1:9000");
-    env::set_var("S3_ACCESS_KEY", "doc-storage-user");
-    env::set_var("S3_SECRET_KEY", "doc-storage-password");
-    let client = s3::connection_builder().await?;
+    System::with_tokio_rt(|| {
+        Builder::new_multi_thread()
+            .thread_name("doc-storage-worker")
+            .worker_threads(worker_threads)
+            .build()
+            .unwrap()
+    }).block_on(async_bootstrap())
+}
 
-    println!("Uploading Cargo.lock...");
-    let put_object_request = rusoto_s3::PutObjectRequest {
-        bucket: client.bucket.clone(),
-        key: "Cargo.lock".to_string(),
-        body: Some(fs::read("Cargo.lock").await.unwrap().into()),
-        ..Default::default()
-    };
-    client.client.put_object(put_object_request).await?;
-    println!("Uploaded Cargo.lock");*/
-
+async fn async_bootstrap() -> Result<(), Box<dyn Error>> {
     print!("Hello, world!");
-    Ok(())
 
+    HttpServer::new(move || {
+        App::new()
+    })
+        .bind("127.0.0.1:1109")?
+        .run()
+        .await?;
+
+    Ok(())
     //https://lib.rs/crates/bita
     //https://discord.com/channels/648981252988338213/935847071540469820/1016443689679200286
     //TODO Cache dependencies in Github CI and DockerFile, Add SHA256 checksum to chunks

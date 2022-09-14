@@ -9,7 +9,7 @@ fn main() -> std::io::Result<()> {
         .parse::<usize>()
         .unwrap();
 
-    print!("Starting server with {} worker threads...", worker_threads);
+    print!("Starting server with {} worker threads...\n", worker_threads);
 
     System::with_tokio_rt(|| {
         Builder::new_multi_thread()
@@ -17,17 +17,21 @@ fn main() -> std::io::Result<()> {
             .worker_threads(worker_threads)
             .enable_all()
             .build()
-            .unwrap()
+            .expect("Failed to create Tokio runtime")
     })
     .block_on(async_bootstrap(worker_threads))
 }
 
 async fn async_bootstrap(worker_threads: usize) -> std::io::Result<()> {
-    println!("done");
+    let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
+    let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
+    let address = format!("{}:{}", host, port);
+
+    print!("Starting server on {}...\n", &address);
 
     HttpServer::new(|| App::new().route("/", web::get().to(|| async { "Hello world!" })))
         .workers(worker_threads)
-        .bind("0.0.0.0:8000")?
+        .bind(&address)?
         .run()
         .await
     //https://lib.rs/crates/bita

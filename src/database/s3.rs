@@ -1,5 +1,5 @@
 use rusoto_core::credential::StaticProvider;
-use rusoto_core::{request, Region, RusotoError};
+use rusoto_core::{request, Region, RusotoError, HttpClient};
 use rusoto_s3::{CreateBucketError, CreateBucketRequest, S3Client, S3};
 use std::env;
 use std::error::Error;
@@ -9,36 +9,40 @@ pub struct S3Database {
     pub bucket: String,
 }
 
-pub async fn connection_builder() -> Result<S3Database, Box<dyn Error>> {
-    let bucket_name = env::var("S3_BUCKET_NAME").expect("S3 bucket name not set");
-    let storage_region = env::var("S3_REGION").expect("S3 region not set");
-    let storage_url = env::var("S3_URL").expect("S3 url not set");
-    let storage_access_key = env::var("S3_ACCESS_KEY").expect("S3 access key not set");
-    let storage_secret_key = env::var("S3_SECRET_KEY").expect("S3 secret key not set");
+impl S3Database {
+    pub fn new() -> Self {
+        let bucket = env::var("S3_BUCKET").expect("S3 bucket must be set");
 
-    let client = S3Client::new_with(
-        request::HttpClient::new()?,
-        StaticProvider::new_minimal(storage_access_key, storage_secret_key),
-        Region::Custom {
-            name: storage_region,
-            endpoint: storage_url,
-        },
-    );
+        let region = env::var("S3_REGION").expect("S3 region must be set");
+        let url = env::var("S3_URL").expect("S3 url must be set");
+        let region = Region::Custom {
+            name: region,
+            endpoint: url,
+        };
 
-    let create_bucket_request = CreateBucketRequest {
-        bucket: bucket_name.clone(),
-        ..Default::default()
-    };
-    match client.create_bucket(create_bucket_request).await {
-        Ok(_) => println!("Bucket created"),
-        Err(RusotoError::Service(CreateBucketError::BucketAlreadyOwnedByYou(_))) => {
-            println!("Bucket already exists")
-        }
-        Err(e) => return Err(Box::new(e)),
+        let access_key = env::var("S3_ACCESS_KEY").expect("S3 access key must be set");
+        let secret_key = env::var("S3_SECRET_KEY").expect("S3 secret key must be set");
+        let credentials = StaticProvider::new_minimal(access_key, secret_key);
+
+        let http_client = HttpClient::new().expect("Failed to create S3 request dispatcher");
+        let client = S3Client::new_with(http_client, credentials, region);
+
+        Self { client, bucket }
     }
 
-    Ok(S3Database {
-        client,
-        bucket: bucket_name,
-    })
+    pub async fn create_bucket(&self) -> Result<(), RusotoError<CreateBucketError>> {
+        let request = CreateBucketRequest {
+            bucket: self.bucket.clone(),
+            ..Default::default()
+        };
+
+        match self.client.create_bucket(request).await {
+            Err(RusotoError::Service(CreateBucketError::BucketAlreadyOwnedByYou(_))) => {
+                print!("Bucket already exists, skipping creation...");
+                Ok(())
+            },
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
 }

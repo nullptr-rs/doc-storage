@@ -19,7 +19,7 @@ rusoto_core = "0.48.0"
 rusoto_s3 = "0.48.0"
 
 [dependencies.tokio]
-version = "1.21.0"
+version = "1.21.1"
 features = ["full"]
 
 [dependencies.serde]

@@ -1,6 +1,7 @@
 use actix_web::rt::System;
 use actix_web::{web, App, HttpServer};
 use std::env;
+use actix_web::web::Data;
 use tokio::runtime::Builder;
 
 fn main() -> std::io::Result<()> {
@@ -29,7 +30,13 @@ async fn async_bootstrap(worker_threads: usize) -> std::io::Result<()> {
 
     print!("Starting server on {}...\n", &address);
 
-    HttpServer::new(|| App::new().route("/", web::get().to(|| async { "Hello world!" })))
+    HttpServer::new(|| {
+        App::new()
+            .app_data(Data::new("Hello world"))
+                .route("/", web::get().to(|| {
+                    async { "Hello world!" }
+                }))
+    })
         .workers(worker_threads)
         .bind(&address)?
         .run()

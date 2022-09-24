@@ -1,8 +1,7 @@
 use rusoto_core::credential::StaticProvider;
-use rusoto_core::{request, Region, RusotoError, HttpClient};
+use rusoto_core::{HttpClient, Region, RusotoError};
 use rusoto_s3::{CreateBucketError, CreateBucketRequest, S3Client, S3};
 use std::env;
-use std::error::Error;
 
 pub struct S3Database {
     pub client: S3Client,
@@ -38,9 +37,9 @@ impl S3Database {
 
         match self.client.create_bucket(request).await {
             Err(RusotoError::Service(CreateBucketError::BucketAlreadyOwnedByYou(_))) => {
-                print!("Bucket already exists, skipping creation...");
+                println!("Bucket already exists, skipping creation...");
                 Ok(())
-            },
+            }
             Ok(_) => Ok(()),
             Err(e) => Err(e),
         }

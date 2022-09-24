@@ -1,30 +1,51 @@
-use actix_multipart::{Field, Multipart, MultipartError};
-use actix_web::{HttpResponse, Scope, web};
-use crate::api::types::{AsyncHttpResponse, Databases};
-use crate::api::uploader;
+use crate::api::types::{AsyncHttpResponse, Databases, File};
+use actix_multipart::{Multipart, MultipartError};
+use actix_web::{web, HttpResponse};
+use futures::stream::TryStreamExt;
+use serde::Serialize;
 
-//Upload a file and upload it in s3
-pub async fn upload(databases: web::Data<Databases>, mut payload: Multipart) -> AsyncHttpResponse {
-    let (mut file_name, mut file_data) = get_file(&mut payload, "multipart/form-data").await?;
-    let &mut s3_client = databases.s3.client;
-
-    let result = s3_client.put_object().bucket("bucket").key("key").body(file).send().await;
+#[derive(Serialize)]
+struct Response {
+    response: String,
+    files: Vec<File>,
 }
 
-pub async fn get_file(payload: &mut Multipart, content_type: &str) -> Result<(String, Vec<u8>), MultipartError> {
-    let mut data = Vec::new();
+pub async fn upload(databases: web::Data<Databases>, mut payload: Multipart) -> AsyncHttpResponse {
+    println!("Uploading file...");
+    let files = get_file(&mut payload).await.expect("Error getting file");
 
-    let mut file = payload.try_next().await?.ok_or(MultipartError::Incomplete)?;
-    let mut file_name = file.name().to_string();
+    Ok(HttpResponse::Ok().json(Response {
+        response: "File was successfully uploaded".to_string(),
+        files,
+    }))
+}
 
-    let content_type = file.content_type().ok_or(MultipartError::Incomplete)?;
-    if content_type != content_type {
-        return Err(MultipartError::Incomplete);
+pub async fn get_file(payload: &mut Multipart) -> Result<Vec<File>, MultipartError> {
+    let mut files = Vec::new();
+
+    println!("Iterating files...");
+    while let Some(mut field) = payload.try_next().await? {
+        let mut data = Vec::new();
+
+        println!("Getting file...");
+        let file_name = field.name().to_string();
+        println!("File name: {}", file_name);
+
+        println!("Reading file...");
+        while let Some(chunk) = field.try_next().await? {
+            println!("Getting chunk: {}", chunk.len());
+            data.extend_from_slice(&chunk);
+        }
+        println!("File read: {}", data.len());
+
+        files.push(File {
+            name: file_name,
+            size: data.len(),
+            data,
+        });
     }
 
-    while let Some(chunk) = file.try_next().await? {
-        data.extend_from_slice(&chunk);
-    }
+    println!("Files: {}", files.len());
 
-    Ok((file_name, data))
+    Ok(files)
 }

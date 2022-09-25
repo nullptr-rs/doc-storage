@@ -8,7 +8,7 @@ updates:
       time: "09:00"
       timezone: "Europe/Paris"
     assignees:
-      - "Yggdrasil80"
+      - "nullptr-rs"
     commit-message:
       prefix: "[CI]"
       include: scope
@@ -21,7 +21,7 @@ updates:
       time: "09:00"
       timezone: "Europe/Paris"
     assignees:
-      - "Yggdrasil80"
+      - "nullptr-rs"
     commit-message:
       prefix: "[Cargo]"
       include: scope

@@ -1,11 +1,11 @@
 [package]
 name = "doc-storage"
 version = "0.1.0"
-authors = ["Yggdrasil80 <louisdechorivit@gmail.com>"]
+authors = ["nullptr.rs <nullptr.rs@gmail.com>"]
 edition = "2021"
 description = "Self-hosted file and document storage service"
 readme = "README.md"
-repository = "https://github.com/Yggdrasil80/doc-storage"
+repository = "https://github.com/nullptr-rs/doc-storage"
 license = "GNU General Public License v3.0"
 keywords = ["doc-storage", "document", "storage", "file", "self-hosted"]
 

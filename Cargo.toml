@@ -19,7 +19,7 @@ md-5 = "0.10.5"
 actix-multipart = "0.4.0"
 
 [dependencies.tokio]
-version = "1.21.1"
+version = "1.21.2"
 features = ["full"]
 
 [dependencies.serde]

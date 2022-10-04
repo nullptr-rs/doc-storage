@@ -12,7 +12,7 @@ struct Response {
 
 pub async fn upload(databases: web::Data<Databases>, mut payload: Multipart) -> AsyncHttpResponse {
     println!("Uploading file...");
-    let files = get_file(&mut payload).await.expect("Error getting file");
+    let files = get_files(&mut payload).await;
 
     Ok(HttpResponse::Ok().json(Response {
         response: "File was successfully uploaded".to_string(),
@@ -20,7 +20,7 @@ pub async fn upload(databases: web::Data<Databases>, mut payload: Multipart) -> 
     }))
 }
 
-pub async fn get_file(payload: &mut Multipart) -> Result<Vec<File>, MultipartError> {
+pub async fn get_files(payload: &mut Multipart) -> Result<Vec<File>, MultipartError> {
     let mut files = Vec::new();
 
     println!("Iterating files...");

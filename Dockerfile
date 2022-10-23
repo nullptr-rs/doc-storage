@@ -22,7 +22,7 @@ RUN cargo build --release -j $CPU_CORES --package doc-storage --bin doc-storage
 FROM --platform=$TARGETPLATFORM alpine:3.16.2 AS runtime
 
 LABEL maintainer="nullptr.rs <nullptr.rs@gmail.com>"
-LABEL org.opencontainers.image.description="Doc Storage, your self-hosted file and document storage service"
+LABEL org.opencontainers.image.description="Doc Storage, a self-hosted file and document synchronisation service"
 
 WORKDIR /usr/src/app
 COPY --from=builder /usr/src/app/target/release/doc-storage .

@@ -3,18 +3,18 @@ name = "doc-storage"
 version = "0.1.0"
 authors = ["nullptr.rs <nullptr.rs@gmail.com>"]
 edition = "2021"
-description = "Self-hosted file and document storage service"
+description = "A self-hosted file and document synchronisation service"
 readme = "README.md"
 repository = "https://github.com/nullptr-rs/doc-storage"
 license = "GNU General Public License v3.0"
-keywords = ["doc-storage", "document", "storage", "file", "self-hosted"]
+keywords = ["doc-storage", "document", "sync", "file", "self-hosted"]
 
 [dependencies]
-serde_json = "1.0.85"
+serde_json = "1.0.87"
 rusoto_core = "0.48.0"
 rusoto_s3 = "0.48.0"
 actix-web = "4.2.1"
-futures = "0.3.5"
+futures = "0.3.25"
 md-5 = "0.10.5"
 actix-multipart = "0.4.0"
 
@@ -31,7 +31,7 @@ version = "1.0.24"
 features = ["zlib"]
 
 [dependencies.uuid]
-version = "1.1.2"
+version = "1.2.1"
 features = [
     "v4",
     "serde",

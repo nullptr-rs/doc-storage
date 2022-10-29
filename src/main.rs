@@ -14,8 +14,8 @@ fn main() -> std::io::Result<()> {
         .parse::<usize>()
         .unwrap();
 
-    print!(
-        "Starting server with {} worker threads...\n",
+    println!(
+        "Starting server with {} worker threads...",
         worker_threads
     );
 
@@ -49,7 +49,7 @@ async fn async_bootstrap(worker_threads: usize) -> std::io::Result<()> {
         RedisClient::new(&redis_address).expect("Failed to connect to Redis. Is it running?"),
     );
 
-    print!("Starting server on {}...\n", &address);
+    println!("Starting server on {}...", &address);
 
     HttpServer::new(move || {
         App::new()

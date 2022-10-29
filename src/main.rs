@@ -2,8 +2,8 @@ use actix_web::middleware::{Compress, Logger};
 use actix_web::rt::System;
 use actix_web::web::Data;
 use actix_web::{App, HttpServer};
-use doc_storage::redis::RedisClient;
 use doc_storage::api;
+use doc_storage::redis::RedisClient;
 use std::env;
 use std::sync::Arc;
 use tokio::runtime::Builder;
@@ -14,10 +14,7 @@ fn main() -> std::io::Result<()> {
         .parse::<usize>()
         .unwrap();
 
-    println!(
-        "Starting server with {} worker threads...",
-        worker_threads
-    );
+    println!("Starting server with {} worker threads...", worker_threads);
 
     //TODO: Configure logging
     std::env::set_var("RUST_LOG", "debug");

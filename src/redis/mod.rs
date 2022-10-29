@@ -1,7 +1,7 @@
 use crate::api::utils::errors::ServiceError;
 use redis::FromRedisValue;
-use std::fmt::Display;
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 
 pub struct RedisClient {
     pub client: redis::Client,
@@ -57,7 +57,10 @@ impl RedisClient {
         self.execute(redis::cmd("GET").arg(key.to_string())).await
     }
 
-    pub async fn d_async_get<T: for<'a> Deserialize<'a>>(&self, key: RedisKey) -> Result<T, ServiceError> {
+    pub async fn d_async_get<T: for<'a> Deserialize<'a>>(
+        &self,
+        key: RedisKey,
+    ) -> Result<T, ServiceError> {
         let result = self.async_get(key).await?;
 
         let result = serde_json::from_str(&result).map_err(|error| {
@@ -79,7 +82,11 @@ impl RedisClient {
         .await
     }
 
-    pub async fn s_async_set<T: Serialize>(&self, key: RedisKey, value: &T) -> Result<String, ServiceError> {
+    pub async fn s_async_set<T: Serialize>(
+        &self,
+        key: RedisKey,
+        value: &T,
+    ) -> Result<String, ServiceError> {
         let value = serde_json::to_string(value).map_err(|error| {
             ServiceError::InternalServerError(
                 "Failed to serialize the data".to_string(),

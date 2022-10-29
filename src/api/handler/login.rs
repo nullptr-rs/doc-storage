@@ -31,7 +31,9 @@ pub async fn handle_registration(
         )
     })?;
 
-    redis.s_async_set(RedisKey::Account(payload.username.clone()), &user).await?;
+    redis
+        .s_async_set(RedisKey::Account(payload.username.clone()), &user)
+        .await?;
     let response = RegistrationResponse {
         username: payload.username.clone(),
     };
@@ -43,20 +45,31 @@ pub async fn handle_registration(
     )
 }
 
-pub async fn handle_login(payload: web::Json<LoginPayload>, redis: web::Data<Arc<RedisClient>>) -> Result<HttpResponse, ServiceError> {
-    let exists = redis.async_exists(RedisKey::Account(payload.username.clone())).await?;
+pub async fn handle_login(
+    payload: web::Json<LoginPayload>,
+    redis: web::Data<Arc<RedisClient>>,
+) -> Result<HttpResponse, ServiceError> {
+    let exists = redis
+        .async_exists(RedisKey::Account(payload.username.clone()))
+        .await?;
 
     conditional!(!exists, {
-        return Err(ServiceError::BadRequest("An account with that username does not exist.".to_string()));
+        return Err(ServiceError::BadRequest(
+            "An account with that username does not exist.".to_string(),
+        ));
     });
 
-    let user = redis.d_async_get::<User>(RedisKey::Account(payload.username.clone())).await?;
-    let valid = User::verify_password(payload.password.clone(), user.password.clone()).map_err(|error| {
-        ServiceError::InternalServerError(
-            "Failed to verify the password".to_string(),
-            Some(error.into()),
-        )
-    })?;
+    let user = redis
+        .d_async_get::<User>(RedisKey::Account(payload.username.clone()))
+        .await?;
+    let valid = User::verify_password(payload.password.clone(), user.password.clone()).map_err(
+        |error| {
+            ServiceError::InternalServerError(
+                "Failed to verify the password".to_string(),
+                Some(error.into()),
+            )
+        },
+    )?;
 
     conditional!(!valid, {
         return Err(ServiceError::BadRequest("Invalid password.".to_string()));
@@ -66,10 +79,13 @@ pub async fn handle_login(payload: web::Json<LoginPayload>, redis: web::Data<Arc
         token: Uuid::new_v4().to_string(),
     };
 
-    Ok(Response::<LoginResponse>::new(StatusCode::OK, "Logged in successfully").data(response).into())
+    Ok(
+        Response::<LoginResponse>::new(StatusCode::OK, "Logged in successfully")
+            .data(response)
+            .into(),
+    )
 }
 
 pub async fn handle_logout() -> Result<HttpResponse, ServiceError> {
-
     Ok(Response::<()>::new(StatusCode::OK, "Logged out successfully").into())
 }

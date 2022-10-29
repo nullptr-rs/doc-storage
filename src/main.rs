@@ -1,10 +1,11 @@
+use actix_web::middleware::{Compress, Logger};
 use actix_web::rt::System;
 use actix_web::web::Data;
 use actix_web::{App, HttpServer};
-use doc_storage::api::types::{Databases, ServerInfo};
-use doc_storage::api::url;
-use doc_storage::database::s3::S3Database;
+use doc_storage::redis::RedisClient;
+use doc_storage::api;
 use std::env;
+use std::sync::Arc;
 use tokio::runtime::Builder;
 
 fn main() -> std::io::Result<()> {
@@ -13,16 +14,15 @@ fn main() -> std::io::Result<()> {
         .parse::<usize>()
         .unwrap();
 
-    print!(
-        "Starting server with {} worker threads...\n",
+    println!(
+        "Starting server with {} worker threads...",
         worker_threads
     );
 
-    env::set_var("S3_BUCKET", "doc-storage");
-    env::set_var("S3_REGION", "eu-west-2");
-    env::set_var("S3_URL", "http://127.0.0.1:9000");
-    env::set_var("S3_ACCESS_KEY", "doc-storage-user");
-    env::set_var("S3_SECRET_KEY", "doc-storage-password");
+    //TODO: Configure logging
+    std::env::set_var("RUST_LOG", "debug");
+    std::env::set_var("RUST_BACKTRACE", "1");
+    env_logger::init();
 
     System::with_tokio_rt(|| {
         Builder::new_multi_thread()
@@ -36,30 +36,30 @@ fn main() -> std::io::Result<()> {
 }
 
 async fn async_bootstrap(worker_threads: usize) -> std::io::Result<()> {
-    let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
+    let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
-    let address = format!("{}:{}", host.clone(), port.clone());
+    let address = format!("{}:{}", host, port);
 
-    let app_info = Data::new(ServerInfo::new(host, port, worker_threads));
+    let redis_host = env::var("REDIS_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let redis_port = env::var("REDIS_PORT").unwrap_or_else(|_| "6379".to_string());
+    let redis_password = env::var("REDIS_PASSWORD").unwrap_or_else(|_| "nullptr-rs".to_string());
+    let redis_address = format!("redis://:{}@{}:{}", redis_password, redis_host, redis_port);
 
-    let s3 = S3Database::new();
-    s3.create_bucket().await.expect("Failed to create bucket");
+    let redis = Arc::new(
+        RedisClient::new(&redis_address).expect("Failed to connect to Redis. Is it running?"),
+    );
 
-    let databases = Data::new(Databases::new(s3));
-
-    print!("Starting server on {}...\n", &address);
+    println!("Starting server on {}...", &address);
 
     HttpServer::new(move || {
         App::new()
-            .app_data(app_info.to_owned())
-            .app_data(databases.to_owned())
-            .service(url::register_url())
+            .wrap(Logger::default())
+            .wrap(Compress::default())
+            .app_data(Data::new(redis.clone()))
+            .service(api::register_endpoints())
     })
     .workers(worker_threads)
     .bind(address)?
     .run()
     .await
-    //https://lib.rs/crates/bita
-    //https://discord.com/channels/648981252988338213/935847071540469820/1016443689679200286
-    //TODO Add SHA256 checksum to chunks
 }

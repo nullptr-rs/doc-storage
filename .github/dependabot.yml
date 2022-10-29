@@ -12,7 +12,7 @@ updates:
     commit-message:
       prefix: "[CI]"
       include: scope
-    target-branch: "master"
+    target-branch: "develop"
 
   - package-ecosystem: "cargo"
     directory: "/"
@@ -25,4 +25,4 @@ updates:
     commit-message:
       prefix: "[Cargo]"
       include: scope
-    target-branch: "master"
+    target-branch: "develop"

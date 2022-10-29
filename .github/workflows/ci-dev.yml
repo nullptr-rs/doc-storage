@@ -36,4 +36,4 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release -j ${{ env.CORES }}
+          args: -j ${{ env.CORES }}

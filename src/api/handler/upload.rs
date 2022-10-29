@@ -1,26 +1,21 @@
-use crate::api::types::{AsyncHttpResponse, Databases, File};
+use crate::api::utils::types::Response;
+use crate::utils::types::File;
 use actix_multipart::{Multipart, MultipartError};
-use actix_web::{web, HttpResponse};
+use actix_web::http::StatusCode;
+use actix_web::HttpResponse;
 use futures::stream::TryStreamExt;
-use serde::Serialize;
 
-#[derive(Serialize)]
-struct Response {
-    response: String,
-    files: Vec<File>,
+pub async fn handle_file_upload(mut payload: Multipart) -> HttpResponse {
+    let files = extract_files(&mut payload)
+        .await
+        .expect("Failed to extract files");
+
+    Response::new(StatusCode::OK, "Files uploaded successfully")
+        .data(files)
+        .into()
 }
 
-pub async fn upload(databases: web::Data<Databases>, mut payload: Multipart) -> AsyncHttpResponse {
-    println!("Uploading file...");
-    let files = get_files(&mut payload).await;
-
-    Ok(HttpResponse::Ok().json(Response {
-        response: "File was successfully uploaded".to_string(),
-        files,
-    }))
-}
-
-pub async fn get_files(payload: &mut Multipart) -> Result<Vec<File>, MultipartError> {
+pub async fn extract_files(payload: &mut Multipart) -> Result<Vec<File>, MultipartError> {
     let mut files = Vec::new();
 
     println!("Iterating files...");

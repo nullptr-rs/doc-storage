@@ -21,6 +21,14 @@ fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_BACKTRACE", "1");
     env_logger::init();
 
+    /*
+    pub struct NewUser<'a> {
+        pub first_name: &'a str,
+        pub last_name: &'a str,
+        pub email: &'a str,
+    }
+     */
+
     System::with_tokio_rt(|| {
         Builder::new_multi_thread()
             .thread_name("doc-storage-worker")

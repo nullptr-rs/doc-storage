@@ -34,6 +34,7 @@ pub async fn handle_registration(
     redis
         .s_async_set(RedisKey::Account(payload.username.clone()), &user)
         .await?;
+
     let response = RegistrationResponse {
         username: payload.username.clone(),
     };

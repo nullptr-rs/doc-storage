@@ -12,7 +12,7 @@ pub enum ServiceError {
 }
 
 impl Display for ServiceError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             ServiceError::InternalServerError(message, _) => {
                 write!(f, "Internal server error: {}", message)
@@ -41,62 +41,27 @@ impl ResponseError for ServiceError {
     }
 
     fn error_response(&self) -> HttpResponse {
-        let response: Response<()> = self.into();
-        response.into()
-    }
-}
+        match self {
+            ServiceError::InternalServerError(message, err) => {
+                let mut response = Response::<()>::new(StatusCode::INTERNAL_SERVER_ERROR, message);
 
-impl From<ServiceError> for Response<()> {
-    fn from(error: ServiceError) -> Self {
-        match error {
-            ServiceError::InternalServerError(message, error) => {
-                let mut response = Response::new(StatusCode::INTERNAL_SERVER_ERROR, &message);
-
-                conditional!(error.is_some(), {
-                    response = response.error(error.unwrap());
+                conditional!(err.is_some(), {
+                    response = response.error_message(err.as_ref().unwrap().to_string())
                 });
 
-                response
+                response.into()
             }
-            ServiceError::BadRequest(message) => Response::new(StatusCode::BAD_REQUEST, &message),
-            ServiceError::NotFound(message) => Response::new(StatusCode::NOT_FOUND, &message),
-            ServiceError::Unauthorized => Response::new(StatusCode::UNAUTHORIZED, "Unauthorized"),
-        }
-    }
-}
-
-impl From<&ServiceError> for Response<()> {
-    fn from(error: &ServiceError) -> Self {
-        match error {
-            ServiceError::InternalServerError(message, error) => {
-                let mut response = Response::new(StatusCode::INTERNAL_SERVER_ERROR, message);
-
-                conditional!(error.is_some(), {
-                    let error = error.as_ref().unwrap();
-                    response = response.error_message(error.to_string());
-                });
-
-                response
+            ServiceError::BadRequest(message) => {
+                Response::<()>::new(StatusCode::BAD_REQUEST, message).into()
             }
-            ServiceError::BadRequest(message) => Response::new(StatusCode::BAD_REQUEST, message),
-            ServiceError::NotFound(message) => Response::new(StatusCode::NOT_FOUND, message),
-            ServiceError::Unauthorized => Response::new(StatusCode::UNAUTHORIZED, "Unauthorized"),
+            ServiceError::NotFound(message) => {
+                Response::<()>::new(StatusCode::NOT_FOUND, message).into()
+            }
+            ServiceError::Unauthorized => Response::<()>::new(
+                StatusCode::UNAUTHORIZED,
+                "You must be logged in to access this resource.",
+            )
+            .into(),
         }
-    }
-}
-
-impl From<ServiceError> for HttpResponse {
-    fn from(error: ServiceError) -> Self {
-        let response: Response<()> = error.into();
-
-        response.into()
-    }
-}
-
-impl From<&ServiceError> for HttpResponse {
-    fn from(error: &ServiceError) -> Self {
-        let response: Response<()> = error.into();
-
-        response.into()
     }
 }

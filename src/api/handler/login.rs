@@ -24,7 +24,7 @@ pub async fn handle_registration(
         ));
     });
 
-    let user = User::new(&payload.username, &payload.password).map_err(|error| {
+    let user = User::new(&payload.username, &payload.password, &payload.device_id).map_err(|error| {
         ServiceError::InternalServerError(
             "Failed to create a new user".to_string(),
             Some(error.into()),

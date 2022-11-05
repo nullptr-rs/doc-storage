@@ -1,11 +1,12 @@
 use crate::api::handler::{login, upload};
 use actix_web::{web, Scope};
+use crate::utils::constants;
 
 pub mod handler;
 pub mod utils;
 
 pub fn register_endpoints() -> Scope {
-    Scope::new("/api")
+    Scope::new(constants::BASE_ROUTE)
         .service(
             Scope::new("/auth")
                 .service(

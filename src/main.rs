@@ -3,23 +3,23 @@ use actix_web::rt::System;
 use actix_web::web::Data;
 use actix_web::{App, HttpServer};
 use doc_storage::api;
-use doc_storage::redis::RedisClient;
+use doc_storage::redis::{RedisClient, RedisKey};
 use std::env;
 use std::sync::Arc;
 use tokio::runtime::Builder;
+use doc_storage::jwt::UserClaims;
+use doc_storage::user::User;
 
 fn main() -> std::io::Result<()> {
+    env::set_var("RUST_LOG", "debug");
+    env_logger::init();
+
     let worker_threads = env::var("WORKER_THREADS")
         .unwrap_or_else(|_| "8".to_string())
         .parse::<usize>()
         .unwrap();
 
-    println!("Starting server with {} worker threads...", worker_threads);
-
-    //TODO: Configure logging
-    std::env::set_var("RUST_LOG", "debug");
-    std::env::set_var("RUST_BACKTRACE", "1");
-    env_logger::init();
+    log::info!("Starting server with {} worker threads...", worker_threads);
 
     System::with_tokio_rt(|| {
         Builder::new_multi_thread()
@@ -46,7 +46,16 @@ async fn async_bootstrap(worker_threads: usize) -> std::io::Result<()> {
         RedisClient::new(&redis_address).expect("Failed to connect to Redis. Is it running?"),
     );
 
-    println!("Starting server on {}...", &address);
+    log::info!("Starting server on {}...", &address);
+
+    let test_user = User::new("nullptr-rs", "nullptr-rs-password", "nullptr-rs-device-id").expect("Failed to create test user");
+    redis.s_async_set(RedisKey::Account(test_user.username.clone()), &test_user).await.expect("Failed to save user to Redis");
+
+    let test_claims = UserClaims::new(&test_user, "nullptr-rs-device-id");
+    log::info!("Test user: {}", serde_json::to_string(&test_user).unwrap());
+    log::info!("Test claims: {}", serde_json::to_string(&test_claims).unwrap());
+    log::info!("Test token: {}", test_claims.generate_token().unwrap());
+
 
     HttpServer::new(move || {
         App::new()

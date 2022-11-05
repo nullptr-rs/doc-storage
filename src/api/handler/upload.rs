@@ -18,20 +18,20 @@ pub async fn handle_file_upload(mut payload: Multipart) -> HttpResponse {
 pub async fn extract_files(payload: &mut Multipart) -> Result<Vec<File>, MultipartError> {
     let mut files = Vec::new();
 
-    println!("Iterating files...");
+    log::info!("Iterating files...");
     while let Some(mut field) = payload.try_next().await? {
         let mut data = Vec::new();
 
-        println!("Getting file...");
+        log::info!("Getting file...");
         let file_name = field.name().to_string();
-        println!("File name: {}", file_name);
+        log::info!("File name: {}", file_name);
 
-        println!("Reading file...");
+        log::info!("Reading file...");
         while let Some(chunk) = field.try_next().await? {
-            println!("Getting chunk: {}", chunk.len());
+            log::info!("Getting chunk: {}", chunk.len());
             data.extend_from_slice(&chunk);
         }
-        println!("File read: {}", data.len());
+        log::info!("File read: {}", data.len());
 
         files.push(File {
             name: file_name,
@@ -40,7 +40,7 @@ pub async fn extract_files(payload: &mut Multipart) -> Result<Vec<File>, Multipa
         });
     }
 
-    println!("Files: {}", files.len());
+    log::info!("Files: {}", files.len());
 
     Ok(files)
 }

@@ -1,7 +1,4 @@
 use serde::Serialize;
-use std::collections::HashMap;
-
-pub type SessionState = HashMap<String, String>;
 
 #[derive(Serialize)]
 pub struct File {

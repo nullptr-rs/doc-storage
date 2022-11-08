@@ -13,7 +13,7 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(username: &str, password: &str) -> Result<Self, anyhow::Error> {
+    pub fn new(username: &str, password: &str, device_id: &str) -> Result<Self, anyhow::Error> {
         let id = Uuid::new_v4();
         let password = Self::hash_password(password)?;
 
@@ -21,7 +21,7 @@ impl User {
             id,
             username: username.to_string(),
             password,
-            device_id: Vec::new(),
+            device_id: vec![device_id.to_string()],
         })
     }
 

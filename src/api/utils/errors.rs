@@ -72,7 +72,8 @@ impl ResponseError for ServiceError {
                 Response::<()>::new(StatusCode::UNAUTHORIZED, "Invalid token").into()
             }
             ServiceError::ExpiredToken => {
-                Response::<()>::new(StatusCode::UNAUTHORIZED, "Expired token, please refresh it").into()
+                Response::<()>::new(StatusCode::UNAUTHORIZED, "Expired token, please refresh it")
+                    .into()
             }
         }
     }

@@ -11,7 +11,7 @@ macro_rules! conditional {
 macro_rules! conditional_return {
     ($cond:expr, $then:expr) => {
         if $cond {
-            return $then
+            return $then;
         }
     };
 }

@@ -3,12 +3,13 @@ use actix_web::rt::System;
 use actix_web::web::Data;
 use actix_web::{App, HttpServer};
 use doc_storage::api;
+use doc_storage::jwt::UserClaims;
+use doc_storage::middleware::auth::AuthenticationMiddleware;
 use doc_storage::redis::{RedisClient, RedisKey};
+use doc_storage::user::User;
 use std::env;
 use std::sync::Arc;
 use tokio::runtime::Builder;
-use doc_storage::jwt::UserClaims;
-use doc_storage::user::User;
 
 fn main() -> std::io::Result<()> {
     env::set_var("RUST_LOG", "debug");
@@ -20,14 +21,6 @@ fn main() -> std::io::Result<()> {
         .unwrap();
 
     log::info!("Starting server with {} worker threads...", worker_threads);
-
-    /*
-    pub struct NewUser<'a> {
-        pub first_name: &'a str,
-        pub last_name: &'a str,
-        pub email: &'a str,
-    }
-     */
 
     System::with_tokio_rt(|| {
         Builder::new_multi_thread()
@@ -56,19 +49,11 @@ async fn async_bootstrap(worker_threads: usize) -> std::io::Result<()> {
 
     log::info!("Starting server on {}...", &address);
 
-    let test_user = User::new("nullptr-rs", "nullptr-rs-password", "nullptr-rs-device-id").expect("Failed to create test user");
-    redis.s_async_set(RedisKey::Account(test_user.username.clone()), &test_user).await.expect("Failed to save user to Redis");
-
-    let test_claims = UserClaims::new(&test_user, "nullptr-rs-device-id");
-    log::info!("Test user: {}", serde_json::to_string(&test_user).unwrap());
-    log::info!("Test claims: {}", serde_json::to_string(&test_claims).unwrap());
-    log::info!("Test token: {}", test_claims.generate_token().unwrap());
-
-
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
             .wrap(Compress::default())
+            .wrap(AuthenticationMiddleware::new())
             .app_data(Data::new(redis.clone()))
             .service(api::register_endpoints())
     })

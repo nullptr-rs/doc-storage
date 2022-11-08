@@ -3,13 +3,13 @@ use crate::api::utils::payloads::{LoginPayload, RegistrationPayload};
 use crate::api::utils::responses::{LoginResponse, RegistrationResponse};
 use crate::api::utils::types::Response;
 use crate::conditional;
+use crate::jwt::UserClaims;
 use crate::redis::{RedisClient, RedisKey};
 use crate::user::User;
 use actix_web::http::StatusCode;
 use actix_web::{web, HttpResponse};
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::jwt::UserClaims;
 
 pub async fn handle_registration(
     payload: web::Json<RegistrationPayload>,
@@ -25,12 +25,13 @@ pub async fn handle_registration(
         ));
     });
 
-    let user = User::new(&payload.username, &payload.password, &payload.device_id).map_err(|error| {
-        ServiceError::InternalServerError(
-            "Failed to create a new user".to_string(),
-            Some(error.into()),
-        )
-    })?;
+    let user =
+        User::new(&payload.username, &payload.password, &payload.device_id).map_err(|error| {
+            ServiceError::InternalServerError(
+                "Failed to create a new user".to_string(),
+                Some(error.into()),
+            )
+        })?;
 
     redis
         .s_async_set(RedisKey::Account(payload.username.clone()), &user)
@@ -90,5 +91,9 @@ pub async fn handle_login(
 
 pub async fn handle_logout(claims: web::ReqData<UserClaims>) -> Result<HttpResponse, ServiceError> {
     let claims = claims.into_inner();
-    Ok(Response::<UserClaims>::new(StatusCode::OK, "Logged out successfully").data(claims).into())
+    Ok(
+        Response::<UserClaims>::new(StatusCode::OK, "Logged out successfully")
+            .data(claims)
+            .into(),
+    )
 }

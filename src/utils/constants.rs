@@ -1,7 +1,6 @@
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation};
 
 pub const BASE_ROUTE: &str = "/api/v1";
-pub const AUTHORIZATION: &str = "Authorization";
 pub const IGNORED_AUTH_ROUTES: [&str; 2] = ["auth/register", "auth/login"];
 
 lazy_static::lazy_static!(
@@ -18,4 +17,4 @@ lazy_static::lazy_static!(
 );
 
 pub const ISSUER: &str = "doc-storage-authenticator";
-pub const EXPIRATION_TIME: usize = 60 * 60 * 24 * 7; // 7 days
+pub const EXPIRATION_TIME: usize = 60 * 60 * 24; // 24 hours

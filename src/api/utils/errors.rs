@@ -8,7 +8,10 @@ pub enum ServiceError {
     InternalServerError(String, Option<anyhow::Error>),
     BadRequest(String),
     NotFound(String),
-    Unauthorized,
+
+    MissingToken,
+    InvalidToken,
+    ExpiredToken,
 }
 
 impl Display for ServiceError {
@@ -19,7 +22,9 @@ impl Display for ServiceError {
             }
             ServiceError::BadRequest(message) => write!(f, "Bad request: {}", message),
             ServiceError::NotFound(message) => write!(f, "Resource not found: {}", message),
-            ServiceError::Unauthorized => write!(f, "Unauthorized"),
+            ServiceError::MissingToken => write!(f, "Missing token header"),
+            ServiceError::InvalidToken => write!(f, "Invalid token"),
+            ServiceError::ExpiredToken => write!(f, "Expired token, please refresh it"),
         }
     }
 }
@@ -36,14 +41,15 @@ impl ResponseError for ServiceError {
             ServiceError::InternalServerError(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
             ServiceError::BadRequest(_) => StatusCode::BAD_REQUEST,
             ServiceError::NotFound(_) => StatusCode::NOT_FOUND,
-            ServiceError::Unauthorized => StatusCode::UNAUTHORIZED,
+            _ => StatusCode::UNAUTHORIZED,
         }
     }
 
     fn error_response(&self) -> HttpResponse {
         match self {
             ServiceError::InternalServerError(message, err) => {
-                let mut response = Response::<()>::new(StatusCode::INTERNAL_SERVER_ERROR, message);
+                let message = format!("Internal server error: {}", message);
+                let mut response = Response::<()>::new(StatusCode::INTERNAL_SERVER_ERROR, &message);
 
                 conditional!(err.is_some(), {
                     response = response.error_message(err.as_ref().unwrap().to_string())
@@ -52,16 +58,22 @@ impl ResponseError for ServiceError {
                 response.into()
             }
             ServiceError::BadRequest(message) => {
-                Response::<()>::new(StatusCode::BAD_REQUEST, message).into()
+                let message = format!("Bad request: {}", message);
+                Response::<()>::new(StatusCode::BAD_REQUEST, &message).into()
             }
             ServiceError::NotFound(message) => {
-                Response::<()>::new(StatusCode::NOT_FOUND, message).into()
+                let message = format!("Resource not found: {}", message);
+                Response::<()>::new(StatusCode::NOT_FOUND, &message).into()
             }
-            ServiceError::Unauthorized => Response::<()>::new(
-                StatusCode::UNAUTHORIZED,
-                "You must be logged in to access this resource.",
-            )
-            .into(),
+            ServiceError::MissingToken => {
+                Response::<()>::new(StatusCode::UNAUTHORIZED, "Missing token header").into()
+            }
+            ServiceError::InvalidToken => {
+                Response::<()>::new(StatusCode::UNAUTHORIZED, "Invalid token").into()
+            }
+            ServiceError::ExpiredToken => {
+                Response::<()>::new(StatusCode::UNAUTHORIZED, "Expired token, please refresh it").into()
+            }
         }
     }
 }

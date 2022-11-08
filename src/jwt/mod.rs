@@ -3,8 +3,7 @@ use uuid::Uuid;
 use crate::user::User;
 use crate::utils::constants;
 
-
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct UserClaims {
     pub id: Uuid,
     pub username: String,
@@ -33,9 +32,8 @@ impl UserClaims {
         jsonwebtoken::encode(&constants::HEADER, self, &constants::ENCODING_KEY).map_err(Into::into)
     }
 
-    pub fn decode_token(token: &str) -> Result<Self, anyhow::Error> {
+    pub fn decode_token(token: &str) -> Result<Self, jsonwebtoken::errors::Error> {
         jsonwebtoken::decode::<Self>(token, &constants::DECODING_KEY, &constants::VALIDATION)
             .map(|data| data.claims)
-            .map_err(Into::into)
     }
 }

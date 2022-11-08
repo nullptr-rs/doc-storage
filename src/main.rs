@@ -41,8 +41,8 @@ fn main() -> std::io::Result<()> {
 }
 
 async fn async_bootstrap(worker_threads: usize) -> std::io::Result<()> {
-    let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-    let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
+    let host = env::var("DOC_STORAGE_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let port = env::var("DOC_STORAGE_PORT").unwrap_or_else(|_| "8080".to_string());
     let address = format!("{}:{}", host, port);
 
     let redis_host = env::var("REDIS_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());

@@ -1,57 +1,104 @@
+use std::pin::Pin;
 use std::task::{Context, Poll};
+use actix_web::body::MessageBody;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
-use actix_web::Error;
-use futures::future::{LocalBoxFuture, Ready, ready};
+use actix_web::HttpMessage;
+use futures::future::{Future, Ready, ready};
+use jsonwebtoken::errors::ErrorKind;
+use crate::api::utils::errors::ServiceError;
+use crate::conditional_return;
+use crate::jwt::UserClaims;
 use crate::utils::constants::{BASE_ROUTE, IGNORED_AUTH_ROUTES};
 
-pub struct Authentication;
-pub struct AuthenticationMiddleware<S> {
+pub struct AuthenticationMiddleware;
+pub struct AuthenticationMiddlewareService<S> {
     service: S,
 }
 
-impl<S, B> Transform<S, ServiceRequest> for Authentication
+pub type ServiceFuture<B> = Pin<Box<dyn Future<Output = Result<ServiceResponse<B>, actix_web::Error>>>>;
+
+impl<S, B> Transform<S, ServiceRequest> for AuthenticationMiddleware
     where
-        S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+        S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error> + 'static,
         S::Future: 'static,
-        B: 'static,
+        B: MessageBody + 'static,
 {
     type Response = ServiceResponse<B>;
-    type Error = Error;
-    type Transform = AuthenticationMiddleware<S>;
+    type Error = actix_web::Error;
+    type Transform = AuthenticationMiddlewareService<S>;
     type InitError = ();
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        ready(Ok(AuthenticationMiddleware {
-            service
-        }))
+        ready(Ok(AuthenticationMiddlewareService::new(service)))
     }
 }
 
-impl<S, B> Service<ServiceRequest> for AuthenticationMiddleware<S>
+impl<S, B> Service<ServiceRequest> for AuthenticationMiddlewareService<S>
     where
-        S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+        S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error>,
         S::Future: 'static,
         B: 'static,
 {
     type Response = ServiceResponse<B>;
-    type Error = Error;
-    type Future = LocalBoxFuture<'static, Result<Self::Response, Self::Error>>;
+    type Error = actix_web::Error;
+    type Future = ServiceFuture<B>;
 
     fn poll_ready(&self, ctx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.service.poll_ready(ctx)
     }
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        let mut authentication_passed = false;
+        let bypass_auth = IGNORED_AUTH_ROUTES.iter().any(|route| req.path().starts_with(format!("{}/{}", BASE_ROUTE, route).as_str()));
 
-        for ignored_route in IGNORED_AUTH_ROUTES.iter() {
-            if req.path().starts_with(format!("{}/{}", BASE_ROUTE, ignored_route).as_str()) {
-                authentication_passed = true;
-                break;
-            }
+        if !bypass_auth {
+            let auth_header = req.headers().get("Authorization");
+            conditional_return!(auth_header.is_none(), self.failure(ServiceError::MissingToken));
+
+            let auth_header = auth_header.unwrap().to_str().unwrap();
+            conditional_return!(auth_header.is_empty() || !auth_header.starts_with("Bearer"), self.failure(ServiceError::MissingToken));
+
+            let token = auth_header.replace("Bearer ", "");
+            conditional_return!(token.is_empty(), self.failure(ServiceError::MissingToken));
+
+            let validation = UserClaims::decode_token(&token).map_err(|error| {
+                let error = error.into_kind();
+
+                match error {
+                    ErrorKind::ExpiredSignature => ServiceError::ExpiredToken,
+                    _ => ServiceError::InvalidToken,
+                }
+            });
+            conditional_return!(validation.is_err(), self.failure(validation.err().unwrap()));
+
+            let validation = validation.unwrap();
+            req.extensions_mut().insert(validation);
         }
 
-        todo!("Check if user is authenticated");
+        let future = self.service.call(req);
+        Box::pin(async move {
+            let res = future.await?;
+            Ok(res)
+        })
+    }
+}
+
+impl<S, B> AuthenticationMiddlewareService<S>
+    where
+        S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error>,
+        S::Future: 'static,
+        B: 'static,
+{
+
+    pub fn new(service: S) -> Self {
+        AuthenticationMiddlewareService {
+            service
+        }
+    }
+
+    pub fn failure(&self, error: ServiceError) -> ServiceFuture<B> {
+        Box::pin(async move {
+            Err(error.into())
+        })
     }
 }

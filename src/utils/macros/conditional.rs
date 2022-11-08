@@ -6,3 +6,12 @@ macro_rules! conditional {
         }
     };
 }
+
+#[macro_export]
+macro_rules! conditional_return {
+    ($cond:expr, $then:expr) => {
+        if $cond {
+            return $then
+        }
+    };
+}

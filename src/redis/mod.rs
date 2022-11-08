@@ -105,6 +105,10 @@ impl RedisClient {
     pub async fn async_del(&self, key: RedisKey) -> Result<String, ServiceError> {
         self.execute(redis::cmd("DEL").arg(key.to_string())).await
     }
+
+    pub async fn async_expire(&self, key: RedisKey, seconds: u32) -> Result<String, ServiceError> {
+        self.execute(redis::cmd("EXPIRE").arg(key.to_string()).arg(seconds)).await
+    }
 }
 
 impl Display for RedisKey {

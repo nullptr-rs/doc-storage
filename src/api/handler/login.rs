@@ -9,6 +9,7 @@ use actix_web::http::StatusCode;
 use actix_web::{web, HttpResponse};
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::jwt::UserClaims;
 
 pub async fn handle_registration(
     payload: web::Json<RegistrationPayload>,
@@ -87,6 +88,7 @@ pub async fn handle_login(
     )
 }
 
-pub async fn handle_logout() -> Result<HttpResponse, ServiceError> {
-    Ok(Response::<()>::new(StatusCode::OK, "Logged out successfully").into())
+pub async fn handle_logout(claims: web::ReqData<UserClaims>) -> Result<HttpResponse, ServiceError> {
+    let claims = claims.into_inner();
+    Ok(Response::<UserClaims>::new(StatusCode::OK, "Logged out successfully").data(claims).into())
 }

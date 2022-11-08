@@ -1,9 +1,13 @@
 use crate::api::utils::types::Response;
-use crate::utils::types::File;
+use crate::storage::models::File;
 use actix_multipart::{Multipart, MultipartError};
 use actix_web::http::StatusCode;
-use actix_web::HttpResponse;
+use actix_web::{web, HttpResponse, Scope};
 use futures::stream::TryStreamExt;
+
+pub fn register_endpoints() -> Scope {
+    Scope::new("/file").service(web::resource("/upload").route(web::post().to(handle_file_upload)))
+}
 
 pub async fn handle_file_upload(mut payload: Multipart) -> HttpResponse {
     let files = extract_files(&mut payload)

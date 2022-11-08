@@ -2,11 +2,9 @@ use actix_web::middleware::{Compress, Logger};
 use actix_web::rt::System;
 use actix_web::web::Data;
 use actix_web::{App, HttpServer};
-use doc_storage::api;
-use doc_storage::jwt::UserClaims;
+use doc_storage::api::handler::endpoints;
 use doc_storage::middleware::auth::AuthenticationMiddleware;
-use doc_storage::redis::{RedisClient, RedisKey};
-use doc_storage::user::User;
+use doc_storage::redis::client::RedisClient;
 use std::env;
 use std::sync::Arc;
 use tokio::runtime::Builder;
@@ -44,7 +42,7 @@ async fn async_bootstrap(worker_threads: usize) -> std::io::Result<()> {
     let redis_address = format!("redis://:{}@{}:{}", redis_password, redis_host, redis_port);
 
     let redis = Arc::new(
-        RedisClient::new(&redis_address).expect("Failed to connect to Redis. Is it running?"),
+        RedisClient::new(redis_address).expect("Failed to connect to Redis. Is it running?"),
     );
 
     log::info!("Starting server on {}...", &address);
@@ -55,7 +53,7 @@ async fn async_bootstrap(worker_threads: usize) -> std::io::Result<()> {
             .wrap(Compress::default())
             .wrap(AuthenticationMiddleware::new())
             .app_data(Data::new(redis.clone()))
-            .service(api::register_endpoints())
+            .service(endpoints::register_endpoints())
     })
     .workers(worker_threads)
     .bind(address)?

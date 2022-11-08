@@ -1,7 +1,7 @@
 use crate::api::utils::errors::ServiceError;
 use crate::conditional_return;
-use crate::jwt::UserClaims;
-use crate::utils::constants::{BASE_ROUTE, IGNORED_AUTH_ROUTES};
+use crate::constants::{BASE_ROUTE, IGNORED_AUTH_ROUTES};
+use crate::jwt::token;
 use actix_web::body::MessageBody;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::HttpMessage;
@@ -77,7 +77,7 @@ where
             let token = auth_header.replace("Bearer ", "");
             conditional_return!(token.is_empty(), self.failure(ServiceError::MissingToken));
 
-            let validation = UserClaims::decode_token(&token).map_err(|error| {
+            let validation = token::decode_token(&token).map_err(|error| {
                 let error = error.into_kind();
 
                 match error {
@@ -89,6 +89,8 @@ where
 
             let validation = validation.unwrap();
             req.extensions_mut().insert(validation);
+
+            log::debug!("AuthenticationMiddleware: {:?}", token);
         }
 
         let future = self.service.call(req);

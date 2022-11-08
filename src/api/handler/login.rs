@@ -3,13 +3,20 @@ use crate::api::utils::payloads::{LoginPayload, RegistrationPayload};
 use crate::api::utils::responses::{LoginResponse, RegistrationResponse};
 use crate::api::utils::types::Response;
 use crate::conditional;
-use crate::jwt::UserClaims;
-use crate::redis::{RedisClient, RedisKey};
-use crate::user::User;
+use crate::jwt::models::Claims;
+use crate::jwt::token;
+use crate::redis::client::{RedisClient, RedisKey};
+use crate::user::models::User;
 use actix_web::http::StatusCode;
-use actix_web::{web, HttpResponse};
+use actix_web::{web, HttpResponse, Scope};
 use std::sync::Arc;
-use uuid::Uuid;
+
+pub fn register_endpoints() -> Scope {
+    Scope::new("/auth")
+        .service(web::resource("/register").route(web::post().to(handle_registration)))
+        .service(web::resource("/login").route(web::post().to(handle_login)))
+        .service(web::resource("/logout").route(web::post().to(handle_logout)))
+}
 
 pub async fn handle_registration(
     payload: web::Json<RegistrationPayload>,
@@ -25,13 +32,11 @@ pub async fn handle_registration(
         ));
     });
 
-    let user =
-        User::new(&payload.username, &payload.password, &payload.device_id).map_err(|error| {
-            ServiceError::InternalServerError(
-                "Failed to create a new user".to_string(),
-                Some(error.into()),
-            )
-        })?;
+    let user = User::new(
+        payload.username.clone(),
+        payload.password.clone(),
+        payload.device_id.clone(),
+    );
 
     redis
         .s_async_set(RedisKey::Account(payload.username.clone()), &user)
@@ -65,22 +70,27 @@ pub async fn handle_login(
     let user = redis
         .d_async_get::<User>(RedisKey::Account(payload.username.clone()))
         .await?;
-    let valid = User::verify_password(payload.password.clone(), user.password.clone()).map_err(
-        |error| {
+    let valid = user
+        .verify_password(payload.password.clone())
+        .map_err(|error| {
             ServiceError::InternalServerError(
                 "Failed to verify the password".to_string(),
                 Some(error.into()),
             )
-        },
-    )?;
+        })?;
 
     conditional!(!valid, {
         return Err(ServiceError::BadRequest("Invalid password.".to_string()));
     });
 
-    let response = LoginResponse {
-        token: Uuid::new_v4().to_string(),
-    };
+    let claims = Claims::new(payload.username.clone(), payload.device_id.clone());
+    let token = token::from_claims(&claims).map_err(|error| {
+        ServiceError::InternalServerError(
+            "Failed to generate a token".to_string(),
+            Some(error.into()),
+        )
+    })?;
+    let response = LoginResponse { token };
 
     Ok(
         Response::<LoginResponse>::new(StatusCode::OK, "Logged in successfully")
@@ -89,11 +99,6 @@ pub async fn handle_login(
     )
 }
 
-pub async fn handle_logout(claims: web::ReqData<UserClaims>) -> Result<HttpResponse, ServiceError> {
-    let claims = claims.into_inner();
-    Ok(
-        Response::<UserClaims>::new(StatusCode::OK, "Logged out successfully")
-            .data(claims)
-            .into(),
-    )
+pub async fn handle_logout(_claims: web::ReqData<Claims>) -> Result<HttpResponse, ServiceError> {
+    Ok(Response::<()>::new(StatusCode::OK, "Logged out successfully").into())
 }

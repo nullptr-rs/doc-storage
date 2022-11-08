@@ -2,7 +2,7 @@ use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation};
 
 pub const BASE_ROUTE: &str = "/api/v1";
 pub const AUTHORIZATION: &str = "Authorization";
-pub const IGNORED_AUTH_ROUTES: [&str; 2] = ["/auth/register", "/auth/login"];
+pub const IGNORED_AUTH_ROUTES: [&str; 2] = ["auth/register", "auth/login"];
 
 lazy_static::lazy_static!(
     pub static ref HEADER: Header = Header::new(Algorithm::RS256);

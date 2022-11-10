@@ -2,6 +2,8 @@ use actix_web::http::StatusCode;
 use actix_web::HttpResponse;
 use serde::Serialize;
 
+pub type JwtToken = String;
+
 #[derive(Serialize)]
 pub struct Response<T> {
     pub status: u16,

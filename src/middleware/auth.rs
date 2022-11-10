@@ -1,13 +1,17 @@
 use crate::api::utils::errors::ServiceError;
+use crate::api::utils::types::JwtToken;
 use crate::conditional_return;
 use crate::constants::{BASE_ROUTE, IGNORED_AUTH_ROUTES};
 use crate::jwt::token;
+use crate::jwt::token::TokenType;
+use crate::redis::client::{RedisClient, RedisKey};
 use actix_web::body::MessageBody;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
+use actix_web::web::Data;
 use actix_web::HttpMessage;
 use futures::future::{ready, Future, Ready};
-use jsonwebtoken::errors::ErrorKind;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 
 pub struct AuthenticationMiddleware;
@@ -56,12 +60,7 @@ where
     }
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        let bypass_auth = IGNORED_AUTH_ROUTES.iter().any(|route| {
-            req.path()
-                .starts_with(format!("{}/{}", BASE_ROUTE, route).as_str())
-        });
-
-        if !bypass_auth {
+        if self.check_required_auth(&req) {
             let auth_header = req.headers().get("Authorization");
             conditional_return!(
                 auth_header.is_none(),
@@ -74,20 +73,25 @@ where
                 self.failure(ServiceError::MissingToken)
             );
 
-            let token = auth_header.replace("Bearer ", "");
+            let token: JwtToken = auth_header.replace("Bearer: ", "");
             conditional_return!(token.is_empty(), self.failure(ServiceError::MissingToken));
 
-            let validation = token::decode_token(&token).map_err(|error| {
-                let error = error.into_kind();
-
-                match error {
-                    ErrorKind::ExpiredSignature => ServiceError::ExpiredToken,
-                    _ => ServiceError::InvalidToken,
-                }
-            });
+            let validation = token::decode_token(&token, TokenType::AccessToken);
             conditional_return!(validation.is_err(), self.failure(validation.err().unwrap()));
 
             let validation = validation.unwrap();
+
+            let redis = req.app_data::<Data<Arc<RedisClient>>>().unwrap();
+            let is_blacklisted = redis.exists(RedisKey::SessionBlackList(validation.jti.clone()));
+            conditional_return!(
+                is_blacklisted.is_err(),
+                self.failure(is_blacklisted.err().unwrap())
+            );
+
+            let is_blacklisted = is_blacklisted.unwrap();
+            conditional_return!(is_blacklisted, self.failure(ServiceError::InvalidToken));
+
+            req.extensions_mut().insert(token.clone());
             req.extensions_mut().insert(validation);
 
             log::debug!("AuthenticationMiddleware: {:?}", token);
@@ -109,6 +113,16 @@ where
 {
     pub fn new(service: S) -> Self {
         AuthenticationMiddlewareService { service }
+    }
+
+    pub fn check_required_auth(&self, req: &ServiceRequest) -> bool {
+        let bypass_auth = IGNORED_AUTH_ROUTES.iter().any(|route| {
+            let path = format!("{}/{}", BASE_ROUTE, route);
+
+            req.path().starts_with(path.as_str())
+        });
+
+        !bypass_auth
     }
 
     pub fn failure(&self, error: ServiceError) -> ServiceFuture<B> {

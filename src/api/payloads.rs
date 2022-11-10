@@ -13,3 +13,8 @@ pub struct LoginPayload {
     pub password: String,
     pub device_id: String,
 }
+
+#[derive(Deserialize)]
+pub struct RefreshPayload {
+    pub refresh_token: String,
+}

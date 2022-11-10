@@ -8,10 +8,3 @@ macro_rules! ternary {
         }
     };
 }
-
-#[macro_export]
-macro_rules! ternary_as {
-    ($cond:expr, $then:expr, $else:expr, $as:ty) => {
-        if $cond { $then } else { $else } as $as
-    };
-}

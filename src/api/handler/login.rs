@@ -1,10 +1,11 @@
+use crate::api::payloads::{LoginPayload, RefreshPayload, RegistrationPayload};
+use crate::api::responses::{LoginResponse, RefreshResponse, RegistrationResponse};
 use crate::api::utils::errors::ServiceError;
-use crate::api::utils::payloads::{LoginPayload, RegistrationPayload};
-use crate::api::utils::responses::{LoginResponse, RegistrationResponse};
 use crate::api::utils::types::Response;
-use crate::conditional;
+use crate::conditional_return;
 use crate::jwt::models::Claims;
 use crate::jwt::token;
+use crate::jwt::token::TokenType;
 use crate::redis::client::{RedisClient, RedisKey};
 use crate::user::models::User;
 use actix_web::http::StatusCode;
@@ -16,6 +17,7 @@ pub fn register_endpoints() -> Scope {
         .service(web::resource("/register").route(web::post().to(handle_registration)))
         .service(web::resource("/login").route(web::post().to(handle_login)))
         .service(web::resource("/logout").route(web::post().to(handle_logout)))
+        .service(web::resource("/refresh").route(web::post().to(handle_refresh)))
 }
 
 pub async fn handle_registration(
@@ -26,17 +28,24 @@ pub async fn handle_registration(
         .async_exists(RedisKey::Account(payload.username.clone()))
         .await?;
 
-    conditional!(exists, {
-        return Err(ServiceError::BadRequest(
+    conditional_return!(
+        exists,
+        Err(ServiceError::BadRequest(
             "An account with that username already exists.".to_string(),
-        ));
-    });
+        ))
+    );
 
-    let user = User::new(
+    let mut user = User::new(
         payload.username.clone(),
         payload.password.clone(),
         payload.device_id.clone(),
     );
+    user.hash_password().map_err(|error| {
+        ServiceError::InternalServerError(
+            "Failed to hash password.".to_string(),
+            Some(error.into()),
+        )
+    })?;
 
     redis
         .s_async_set(RedisKey::Account(payload.username.clone()), &user)
@@ -61,11 +70,12 @@ pub async fn handle_login(
         .async_exists(RedisKey::Account(payload.username.clone()))
         .await?;
 
-    conditional!(!exists, {
-        return Err(ServiceError::BadRequest(
+    conditional_return!(
+        !exists,
+        Err(ServiceError::BadRequest(
             "An account with that username does not exist.".to_string(),
-        ));
-    });
+        ))
+    );
 
     let user = redis
         .d_async_get::<User>(RedisKey::Account(payload.username.clone()))
@@ -79,18 +89,15 @@ pub async fn handle_login(
             )
         })?;
 
-    conditional!(!valid, {
-        return Err(ServiceError::BadRequest("Invalid password.".to_string()));
-    });
+    conditional_return!(
+        !valid,
+        Err(ServiceError::BadRequest("Invalid password".to_string()))
+    );
 
-    let claims = Claims::new(payload.username.clone(), payload.device_id.clone());
-    let token = token::from_claims(&claims).map_err(|error| {
-        ServiceError::InternalServerError(
-            "Failed to generate a token".to_string(),
-            Some(error.into()),
-        )
-    })?;
-    let response = LoginResponse { token };
+    let (access_token, refresh_token) =
+        token::create_login_tokens(payload.username.clone(), payload.device_id.clone())?;
+
+    let response = LoginResponse::new(access_token, refresh_token);
 
     Ok(
         Response::<LoginResponse>::new(StatusCode::OK, "Logged in successfully")
@@ -99,6 +106,39 @@ pub async fn handle_login(
     )
 }
 
-pub async fn handle_logout(_claims: web::ReqData<Claims>) -> Result<HttpResponse, ServiceError> {
+pub async fn handle_logout(
+    redis: web::Data<Arc<RedisClient>>,
+    claims: web::ReqData<Claims>,
+) -> Result<HttpResponse, ServiceError> {
+    redis.set(RedisKey::SessionBlackList(claims.jti.clone()), "true")?;
     Ok(Response::<()>::new(StatusCode::OK, "Logged out successfully").into())
+}
+
+pub async fn handle_refresh(
+    redis: web::Data<Arc<RedisClient>>,
+    payload: web::Json<RefreshPayload>,
+) -> Result<HttpResponse, ServiceError> {
+    let claims = token::decode_token(&payload.refresh_token, TokenType::RefreshToken)
+        .map_err(|_| ServiceError::InvalidToken)?;
+    let exists = redis.exists(RedisKey::SessionBlackList(claims.jti.clone()))?;
+
+    conditional_return!(
+        exists,
+        Err(ServiceError::BadRequest(
+            "Invalid refresh token".to_string()
+        ))
+    );
+
+    let (access_token, refresh_token) =
+        token::create_login_tokens(claims.username.clone(), claims.device_id.clone())?;
+
+    redis.set(RedisKey::SessionBlackList(claims.jti), "true")?;
+
+    let response = RefreshResponse::new(access_token, refresh_token);
+
+    Ok(
+        Response::<RefreshResponse>::new(StatusCode::OK, "Refreshed successfully")
+            .data(response)
+            .into(),
+    )
 }

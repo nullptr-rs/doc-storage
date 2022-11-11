@@ -1,6 +1,5 @@
-use crate::constants::{EXPIRATION_TIME, ISSUER, REFRESH_EXPIRATION_TIME};
+use crate::constants::ISSUER;
 use crate::jwt::token::TokenType;
-use crate::ternary;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -19,17 +18,12 @@ pub struct Claims {
 impl Claims {
     pub fn new(token_type: TokenType, username: String, device_id: String, jti: String) -> Self {
         let now = chrono::Utc::now().timestamp() as usize;
-        let expiration = ternary!(
-            token_type == TokenType::AccessToken,
-            EXPIRATION_TIME + now,
-            REFRESH_EXPIRATION_TIME + now
-        );
 
         Self {
-            token_type,
+            token_type: token_type.clone(),
             username,
             device_id,
-            exp: expiration,
+            exp: token_type.get_expiration() + now,
             iat: now,
             iss: ISSUER.to_string(),
             jti,

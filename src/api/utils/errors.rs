@@ -1,11 +1,10 @@
 use crate::api::utils::types::Response;
-use crate::conditional;
 use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError};
 use std::fmt::{Debug, Display, Formatter};
 
 pub enum ServiceError {
-    InternalServerError(String, Option<anyhow::Error>),
+    InternalServerError(String),
     BadRequest(String),
     NotFound(String),
 
@@ -17,7 +16,7 @@ pub enum ServiceError {
 impl Display for ServiceError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            ServiceError::InternalServerError(message, _) => {
+            ServiceError::InternalServerError(message) => {
                 write!(f, "Internal server error: {}", message)
             }
             ServiceError::BadRequest(message) => write!(f, "Bad request: {}", message),
@@ -38,7 +37,7 @@ impl Debug for ServiceError {
 impl ResponseError for ServiceError {
     fn status_code(&self) -> StatusCode {
         match self {
-            ServiceError::InternalServerError(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
+            ServiceError::InternalServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             ServiceError::BadRequest(_) => StatusCode::BAD_REQUEST,
             ServiceError::NotFound(_) => StatusCode::NOT_FOUND,
             _ => StatusCode::UNAUTHORIZED,
@@ -47,15 +46,9 @@ impl ResponseError for ServiceError {
 
     fn error_response(&self) -> HttpResponse {
         match self {
-            ServiceError::InternalServerError(message, err) => {
-                let message = format!("Internal server error: {}", message);
-                let mut response = Response::<()>::new(StatusCode::INTERNAL_SERVER_ERROR, &message);
-
-                conditional!(err.is_some(), {
-                    response = response.error_message(err.as_ref().unwrap().to_string())
-                });
-
-                response.into()
+            ServiceError::InternalServerError(_) => {
+                log::error!("{}", self);
+                Response::<()>::new(StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into()
             }
             ServiceError::BadRequest(message) => {
                 let message = format!("Bad request: {}", message);

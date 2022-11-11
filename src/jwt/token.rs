@@ -1,11 +1,12 @@
 use crate::api::utils::errors::ServiceError;
-use crate::constants::{DECODING_KEY, ENCODING_KEY, HEADER, REFRESH_DECODING_KEY, VALIDATION};
+use crate::constants::{DECODING_KEY, ENCODING_KEY, EXPIRATION_TIME, HEADER, REFRESH_DECODING_KEY, REFRESH_ENCODING_KEY, REFRESH_EXPIRATION_TIME, TOKEN_GENERATION_ERROR, VALIDATION};
 use crate::jwt::models::Claims;
 use jsonwebtoken::errors::ErrorKind;
-use jsonwebtoken::DecodingKey;
+use jsonwebtoken::{DecodingKey, EncodingKey};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use uuid::Uuid;
+use crate::api::utils::types::{AccessToken, RefreshToken, ServiceResult};
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TokenType {
@@ -14,10 +15,24 @@ pub enum TokenType {
 }
 
 impl TokenType {
+    pub fn get_encoding_key(&self) -> &EncodingKey {
+        match self {
+            TokenType::AccessToken => &ENCODING_KEY,
+            TokenType::RefreshToken => &REFRESH_ENCODING_KEY,
+        }
+    }
+
     pub fn get_decoding_key(&self) -> &DecodingKey {
         match self {
             TokenType::AccessToken => &DECODING_KEY,
             TokenType::RefreshToken => &REFRESH_DECODING_KEY,
+        }
+    }
+
+    pub fn get_expiration(&self) -> usize {
+        match self {
+            TokenType::AccessToken => EXPIRATION_TIME,
+            TokenType::RefreshToken => REFRESH_EXPIRATION_TIME,
         }
     }
 }
@@ -34,7 +49,7 @@ impl Display for TokenType {
 pub fn create_login_tokens(
     username: String,
     device_id: String,
-) -> Result<(String, String), ServiceError> {
+) -> ServiceResult<(AccessToken, RefreshToken)> {
     let uuid = Uuid::new_v4().to_string();
     let access_token = create_token(
         TokenType::AccessToken,
@@ -52,27 +67,30 @@ pub fn create_token(
     username: String,
     device_id: String,
     jti: String,
-) -> Result<String, ServiceError> {
+) -> ServiceResult<String> {
     let claims = Claims::new(token_type, username, device_id, jti);
 
     from_claims(&claims)
 }
 
-pub fn from_claims(claims: &Claims) -> Result<String, ServiceError> {
-    jsonwebtoken::encode(&HEADER, claims, &ENCODING_KEY).map_err(|error| {
-        ServiceError::InternalServerError("Failed to create token".to_string(), Some(error.into()))
-    })
+pub fn from_claims(claims: &Claims) -> ServiceResult<String> {
+    let encoding_key = claims.token_type.get_encoding_key();
+
+    jsonwebtoken::encode(&HEADER, claims, encoding_key).map_err(|_| TOKEN_GENERATION_ERROR)
 }
 
-pub fn decode_token(token: &str, token_type: TokenType) -> Result<Claims, ServiceError> {
-    jsonwebtoken::decode::<Claims>(token, token_type.get_decoding_key(), &VALIDATION)
-        .map(|data| data.claims)
-        .map_err(|error| {
-            let error = error.into_kind();
+pub fn decode_token(token: &str, token_type: TokenType) -> ServiceResult<Claims> {
+    let decoding_key = token_type.get_decoding_key();
 
-            match error {
-                ErrorKind::ExpiredSignature => ServiceError::ExpiredToken,
-                _ => ServiceError::InvalidToken,
-            }
-        })
+    let result = jsonwebtoken::decode::<Claims>(token, decoding_key, &VALIDATION)
+        .map(|data| data.claims);
+
+    result.map_err(|error| {
+        let error = error.into_kind();
+
+        match error {
+            ErrorKind::ExpiredSignature => ServiceError::ExpiredToken,
+            _ => ServiceError::InvalidToken,
+        }
+    })
 }

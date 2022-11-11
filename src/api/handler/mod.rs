@@ -1,3 +1,3 @@
 pub mod endpoints;
-pub mod login;
+pub mod authentication;
 pub mod upload;

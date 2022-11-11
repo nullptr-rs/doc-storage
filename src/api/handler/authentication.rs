@@ -1,7 +1,7 @@
 use crate::api::payloads::{LoginPayload, RefreshPayload, RegistrationPayload};
 use crate::api::responses::{LoginResponse, RefreshResponse, RegistrationResponse};
 use crate::api::utils::errors::ServiceError;
-use crate::api::utils::types::Response;
+use crate::api::utils::types::{Response, ServiceResult};
 use crate::conditional_return;
 use crate::jwt::models::Claims;
 use crate::jwt::token;
@@ -11,6 +11,7 @@ use crate::user::models::User;
 use actix_web::http::StatusCode;
 use actix_web::{web, HttpResponse, Scope};
 use std::sync::Arc;
+use crate::constants::{PASSWORD_COMPARISON_ERROR, REFRESH_EXPIRATION_TIME};
 
 pub fn register_endpoints() -> Scope {
     Scope::new("/auth")
@@ -23,7 +24,7 @@ pub fn register_endpoints() -> Scope {
 pub async fn handle_registration(
     payload: web::Json<RegistrationPayload>,
     redis: web::Data<Arc<RedisClient>>,
-) -> Result<HttpResponse, ServiceError> {
+) -> ServiceResult<HttpResponse> {
     let exists = redis
         .async_exists(RedisKey::Account(payload.username.clone()))
         .await?;
@@ -42,8 +43,7 @@ pub async fn handle_registration(
     );
     user.hash_password().map_err(|error| {
         ServiceError::InternalServerError(
-            "Failed to hash password.".to_string(),
-            Some(error.into()),
+            "Failed to hash password for user".to_string(),
         )
     })?;
 
@@ -65,7 +65,7 @@ pub async fn handle_registration(
 pub async fn handle_login(
     payload: web::Json<LoginPayload>,
     redis: web::Data<Arc<RedisClient>>,
-) -> Result<HttpResponse, ServiceError> {
+) -> ServiceResult<HttpResponse> {
     let exists = redis
         .async_exists(RedisKey::Account(payload.username.clone()))
         .await?;
@@ -82,12 +82,7 @@ pub async fn handle_login(
         .await?;
     let valid = user
         .verify_password(payload.password.clone())
-        .map_err(|error| {
-            ServiceError::InternalServerError(
-                "Failed to verify the password".to_string(),
-                Some(error.into()),
-            )
-        })?;
+        .map_err(|_| PASSWORD_COMPARISON_ERROR)?;
 
     conditional_return!(
         !valid,
@@ -109,17 +104,17 @@ pub async fn handle_login(
 pub async fn handle_logout(
     redis: web::Data<Arc<RedisClient>>,
     claims: web::ReqData<Claims>,
-) -> Result<HttpResponse, ServiceError> {
+) -> ServiceResult<HttpResponse> {
     redis.set(RedisKey::SessionBlackList(claims.jti.clone()), "true")?;
+    redis.expire(RedisKey::SessionBlackList(claims.jti.clone()), REFRESH_EXPIRATION_TIME as u32)?;
     Ok(Response::<()>::new(StatusCode::OK, "Logged out successfully").into())
 }
 
 pub async fn handle_refresh(
     redis: web::Data<Arc<RedisClient>>,
     payload: web::Json<RefreshPayload>,
-) -> Result<HttpResponse, ServiceError> {
-    let claims = token::decode_token(&payload.refresh_token, TokenType::RefreshToken)
-        .map_err(|_| ServiceError::InvalidToken)?;
+) -> ServiceResult<HttpResponse> {
+    let claims = token::decode_token(&payload.refresh_token, TokenType::RefreshToken).map_err(|_| ServiceError::InvalidToken)?;
     let exists = redis.exists(RedisKey::SessionBlackList(claims.jti.clone()))?;
 
     conditional_return!(
@@ -132,7 +127,8 @@ pub async fn handle_refresh(
     let (access_token, refresh_token) =
         token::create_login_tokens(claims.username.clone(), claims.device_id.clone())?;
 
-    redis.set(RedisKey::SessionBlackList(claims.jti), "true")?;
+    redis.set(RedisKey::SessionBlackList(claims.jti.clone()), "true")?;
+    redis.expire(RedisKey::SessionBlackList(claims.jti), REFRESH_EXPIRATION_TIME as u32)?;
 
     let response = RefreshResponse::new(access_token, refresh_token);
 

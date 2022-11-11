@@ -1,5 +1,6 @@
 use crate::user::password;
 use serde::{Deserialize, Serialize};
+use crate::api::utils::types::ServiceResult;
 
 #[derive(Serialize, Deserialize)]
 pub struct User {
@@ -17,12 +18,12 @@ impl User {
         }
     }
 
-    pub fn hash_password(&mut self) -> Result<(), anyhow::Error> {
+    pub fn hash_password(&mut self) -> ServiceResult<()> {
         self.password = password::hash_password(&self.password)?;
         Ok(())
     }
 
-    pub fn verify_password(&self, password: String) -> Result<bool, anyhow::Error> {
+    pub fn verify_password(&self, password: String) -> ServiceResult<bool> {
         password::verify_password(password, self.password.clone())
     }
 }

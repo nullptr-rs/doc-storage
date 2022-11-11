@@ -1,7 +1,8 @@
-use crate::api::utils::errors::ServiceError;
 use redis::FromRedisValue;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use crate::api::utils::types::ServiceResult;
+use crate::constants::{REDIS_ERROR, SERIALIZATION_ERROR, DESERIALIZATION_ERROR};
 
 pub struct RedisClient {
     pub client: redis::Client,
@@ -24,14 +25,12 @@ impl RedisClient {
             .client
             .get_connection()
             .map_err(|error| anyhow::anyhow!(error))?;
+
         cmd.query(&mut connection)
             .map_err(|error| anyhow::anyhow!(error))
     }
 
-    pub async fn execute_async_raw<T: FromRedisValue>(
-        &self,
-        cmd: &mut redis::Cmd,
-    ) -> Result<T, anyhow::Error> {
+    pub async fn execute_async_raw<T: FromRedisValue>(&self, cmd: &mut redis::Cmd) -> Result<T, anyhow::Error> {
         let mut connection = self
             .client
             .get_async_connection()
@@ -43,62 +42,36 @@ impl RedisClient {
             .map_err(|error| anyhow::anyhow!(error))
     }
 
-    pub fn execute<T: FromRedisValue>(&self, cmd: &mut redis::Cmd) -> Result<T, ServiceError> {
-        self.execute_raw(cmd).map_err(|error| {
-            ServiceError::InternalServerError(
-                "Failed to interact with the database".to_string(),
-                Some(error.into()),
-            )
-        })
+    pub fn execute<T: FromRedisValue>(&self, cmd: &mut redis::Cmd) -> ServiceResult<T> {
+        self.execute_raw(cmd).map_err(|_| REDIS_ERROR)
     }
 
-    pub async fn execute_async<T: FromRedisValue>(
-        &self,
-        cmd: &mut redis::Cmd,
-    ) -> Result<T, ServiceError> {
-        self.execute_async_raw(cmd).await.map_err(|error| {
-            ServiceError::InternalServerError(
-                "Failed to interact with the database".to_string(),
-                Some(error.into()),
-            )
-        })
+    pub async fn execute_async<T: FromRedisValue>(&self, cmd: &mut redis::Cmd) -> ServiceResult<T> {
+        self.execute_async_raw(cmd).await.map_err(|_| REDIS_ERROR)
     }
 
-    pub fn get(&self, key: RedisKey) -> Result<String, ServiceError> {
+    pub fn get(&self, key: RedisKey) -> ServiceResult<String> {
         self.execute(redis::cmd("GET").arg(key.to_string()))
     }
 
-    pub async fn async_get(&self, key: RedisKey) -> Result<String, ServiceError> {
+    pub async fn async_get(&self, key: RedisKey) -> ServiceResult<String> {
         self.execute_async(redis::cmd("GET").arg(key.to_string()))
             .await
     }
 
-    pub fn d_get<T: for<'a> Deserialize<'a>>(&self, key: RedisKey) -> Result<T, ServiceError> {
+    pub fn d_get<T: for<'a> Deserialize<'a>>(&self, key: RedisKey) -> ServiceResult<T> {
         let value = self.get(key)?;
 
-        serde_json::from_str(&value).map_err(|error| {
-            ServiceError::InternalServerError(
-                "Failed to deserialize the data".to_string(),
-                Some(error.into()),
-            )
-        })
+        serde_json::from_str(&value).map_err(|_| DESERIALIZATION_ERROR)
     }
 
-    pub async fn d_async_get<T: for<'a> Deserialize<'a>>(
-        &self,
-        key: RedisKey,
-    ) -> Result<T, ServiceError> {
+    pub async fn d_async_get<T: for<'a> Deserialize<'a>>(&self, key: RedisKey) -> ServiceResult<T> {
         let value = self.async_get(key).await?;
 
-        serde_json::from_str(&value).map_err(|error| {
-            ServiceError::InternalServerError(
-                "Failed to deserialize the data".to_string(),
-                Some(error.into()),
-            )
-        })
+        serde_json::from_str(&value).map_err(|_| DESERIALIZATION_ERROR)
     }
 
-    pub fn set(&self, key: RedisKey, value: &str) -> Result<String, ServiceError> {
+    pub fn set(&self, key: RedisKey, value: &str) -> ServiceResult<String> {
         self.execute(
             redis::cmd("SET")
                 .arg(key.to_string())
@@ -106,7 +79,7 @@ impl RedisClient {
         )
     }
 
-    pub async fn async_set(&self, key: RedisKey, value: &str) -> Result<String, ServiceError> {
+    pub async fn async_set(&self, key: RedisKey, value: &str) -> ServiceResult<String> {
         self.execute_async(
             redis::cmd("SET")
                 .arg(key.to_string())
@@ -115,55 +88,41 @@ impl RedisClient {
         .await
     }
 
-    pub fn s_set<T: Serialize>(&self, key: RedisKey, value: &T) -> Result<String, ServiceError> {
-        let value = serde_json::to_string(value).map_err(|error| {
-            ServiceError::InternalServerError(
-                "Failed to serialize the data".to_string(),
-                Some(error.into()),
-            )
-        })?;
+    pub fn s_set<T: Serialize>(&self, key: RedisKey, value: &T) -> ServiceResult<String> {
+        let value = serde_json::to_string(value).map_err(|_| SERIALIZATION_ERROR)?;
 
         self.set(key, &value)
     }
 
-    pub async fn s_async_set<T: Serialize>(
-        &self,
-        key: RedisKey,
-        value: &T,
-    ) -> Result<String, ServiceError> {
-        let value = serde_json::to_string(value).map_err(|error| {
-            ServiceError::InternalServerError(
-                "Failed to serialize the data".to_string(),
-                Some(error.into()),
-            )
-        })?;
+    pub async fn s_async_set<T: Serialize>(&self, key: RedisKey, value: &T) -> ServiceResult<String> {
+        let value = serde_json::to_string(value).map_err(|_| SERIALIZATION_ERROR)?;
 
         self.async_set(key, &value).await
     }
 
-    pub fn exists(&self, key: RedisKey) -> Result<bool, ServiceError> {
+    pub fn exists(&self, key: RedisKey) -> ServiceResult<bool> {
         self.execute(redis::cmd("EXISTS").arg(key.to_string()))
     }
 
-    pub async fn async_exists(&self, key: RedisKey) -> Result<bool, ServiceError> {
+    pub async fn async_exists(&self, key: RedisKey) -> ServiceResult<bool> {
         self.execute_async(redis::cmd("EXISTS").arg(key.to_string()))
             .await
     }
 
-    pub fn delete(&self, key: RedisKey) -> Result<String, ServiceError> {
+    pub fn delete(&self, key: RedisKey) -> ServiceResult<String> {
         self.execute(redis::cmd("DEL").arg(key.to_string()))
     }
 
-    pub async fn async_delete(&self, key: RedisKey) -> Result<String, ServiceError> {
+    pub async fn async_delete(&self, key: RedisKey) -> ServiceResult<String> {
         self.execute_async(redis::cmd("DEL").arg(key.to_string()))
             .await
     }
 
-    pub fn expire(&self, key: RedisKey, seconds: u32) -> Result<String, ServiceError> {
+    pub fn expire(&self, key: RedisKey, seconds: u32) -> ServiceResult<String> {
         self.execute(redis::cmd("EXPIRE").arg(key.to_string()).arg(seconds))
     }
 
-    pub async fn async_expire(&self, key: RedisKey, seconds: u32) -> Result<String, ServiceError> {
+    pub async fn async_expire(&self, key: RedisKey, seconds: u32) -> ServiceResult<String> {
         self.execute_async(redis::cmd("EXPIRE").arg(key.to_string()).arg(seconds))
             .await
     }
@@ -172,6 +131,7 @@ impl RedisClient {
 pub enum RedisKey {
     Base,
     Account(String),
+    Session(String),
     SessionBlackList(String),
     Other(String),
 }
@@ -181,9 +141,8 @@ impl Display for RedisKey {
         match self {
             RedisKey::Base => write!(f, "doc_storage"),
             RedisKey::Account(username) => write!(f, "{}:account:{}", RedisKey::Base, username),
-            RedisKey::SessionBlackList(token) => {
-                write!(f, "{}:session:blacklist:{}", RedisKey::Base, token)
-            }
+            RedisKey::Session(username) => write!(f, "{}:session:{}", RedisKey::Base, username),
+            RedisKey::SessionBlackList(token) => write!(f, "{}:session:blacklist:{}", RedisKey::Base, token),
             RedisKey::Other(key) => write!(f, "{}:{}", RedisKey::Base, key),
         }
     }

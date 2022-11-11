@@ -1,8 +1,11 @@
 use actix_web::http::StatusCode;
 use actix_web::HttpResponse;
 use serde::Serialize;
+use crate::api::utils::errors::ServiceError;
 
-pub type JwtToken = String;
+pub type AccessToken = String;
+pub type RefreshToken = String;
+pub type ServiceResult<T> = Result<T, ServiceError>;
 
 #[derive(Serialize)]
 pub struct Response<T> {

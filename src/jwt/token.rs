@@ -2,7 +2,7 @@ use crate::api::utils::errors::ServiceError;
 use crate::api::utils::types::{AccessToken, RefreshToken, ServiceResult};
 use crate::constants::{
     DECODING_KEY, ENCODING_KEY, EXPIRATION_TIME, HEADER, REFRESH_DECODING_KEY,
-    REFRESH_ENCODING_KEY, REFRESH_EXPIRATION_TIME, TOKEN_GENERATION_ERROR, VALIDATION,
+    REFRESH_ENCODING_KEY, REFRESH_EXPIRATION_TIME, VALIDATION,
 };
 use crate::jwt::models::Claims;
 use jsonwebtoken::errors::ErrorKind;
@@ -79,7 +79,8 @@ pub fn create_token(
 pub fn from_claims(claims: &Claims) -> ServiceResult<String> {
     let encoding_key = claims.token_type.get_encoding_key();
 
-    jsonwebtoken::encode(&HEADER, claims, encoding_key).map_err(|_| TOKEN_GENERATION_ERROR)
+    jsonwebtoken::encode(&HEADER, claims, encoding_key)
+        .map_err(|_| ServiceError::token_generation())
 }
 
 pub fn decode_token(token: &str, token_type: TokenType) -> ServiceResult<Claims> {

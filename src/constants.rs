@@ -1,4 +1,3 @@
-use crate::api::utils::errors::ServiceError;
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation};
 
 pub const BASE_ROUTE: &str = "/api/v1";
@@ -21,13 +20,6 @@ lazy_static::lazy_static!(
         .expect("Failed to load public key. Is it present?");
     pub static ref REFRESH_DECODING_KEY: DecodingKey = DecodingKey::from_rsa_pem(include_bytes!("../public.refresh.pem"))
         .expect("Failed to load refresh public key. Is it present?");
-
-    pub static ref REDIS_ERROR: ServiceError = ServiceError("Failed to query the database".to_string());
-    pub static ref SERIALIZATION_ERROR: ServiceError = ServiceError("Failed to serialize the data".to_string());
-    pub static ref DESERIALIZATION_ERROR: ServiceError = ServiceError("Failed to deserialize the data".to_string());
-    pub static ref TOKEN_GENERATION_ERROR: ServiceError = ServiceError("Failed to generate the token".to_string());
-    pub static ref PASSWORD_HASHING_ERROR: ServiceError = ServiceError("Failed to hash the password".to_string());
-    pub static ref PASSWORD_COMPARISON_ERROR: ServiceError = ServiceError("Failed to compare the password".to_string());
 );
 
 pub const ISSUER: &str = "doc-storage-authenticator";

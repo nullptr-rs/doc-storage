@@ -1,5 +1,5 @@
+use crate::api::utils::errors::ServiceError;
 use crate::api::utils::types::ServiceResult;
-use crate::constants::{DESERIALIZATION_ERROR, REDIS_ERROR, SERIALIZATION_ERROR};
 use redis::FromRedisValue;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
@@ -46,11 +46,14 @@ impl RedisClient {
     }
 
     pub fn execute<T: FromRedisValue>(&self, cmd: &mut redis::Cmd) -> ServiceResult<T> {
-        self.execute_raw(cmd).map_err(|_| REDIS_ERROR)
+        self.execute_raw(cmd)
+            .map_err(|_| ServiceError::redis_query())
     }
 
     pub async fn execute_async<T: FromRedisValue>(&self, cmd: &mut redis::Cmd) -> ServiceResult<T> {
-        self.execute_async_raw(cmd).await.map_err(|_| REDIS_ERROR)
+        self.execute_async_raw(cmd)
+            .await
+            .map_err(|_| ServiceError::redis_query())
     }
 
     pub fn get(&self, key: RedisKey) -> ServiceResult<String> {
@@ -65,13 +68,13 @@ impl RedisClient {
     pub fn d_get<T: for<'a> Deserialize<'a>>(&self, key: RedisKey) -> ServiceResult<T> {
         let value = self.get(key)?;
 
-        serde_json::from_str(&value).map_err(|_| DESERIALIZATION_ERROR)
+        serde_json::from_str(&value).map_err(|_| ServiceError::deserialization())
     }
 
     pub async fn d_async_get<T: for<'a> Deserialize<'a>>(&self, key: RedisKey) -> ServiceResult<T> {
         let value = self.async_get(key).await?;
 
-        serde_json::from_str(&value).map_err(|_| DESERIALIZATION_ERROR)
+        serde_json::from_str(&value).map_err(|_| ServiceError::deserialization())
     }
 
     pub fn set(&self, key: RedisKey, value: &str) -> ServiceResult<String> {
@@ -92,7 +95,7 @@ impl RedisClient {
     }
 
     pub fn s_set<T: Serialize>(&self, key: RedisKey, value: &T) -> ServiceResult<String> {
-        let value = serde_json::to_string(value).map_err(|_| SERIALIZATION_ERROR)?;
+        let value = serde_json::to_string(value).map_err(|_| ServiceError::serialization())?;
 
         self.set(key, &value)
     }
@@ -102,7 +105,7 @@ impl RedisClient {
         key: RedisKey,
         value: &T,
     ) -> ServiceResult<String> {
-        let value = serde_json::to_string(value).map_err(|_| SERIALIZATION_ERROR)?;
+        let value = serde_json::to_string(value).map_err(|_| ServiceError::serialization())?;
 
         self.async_set(key, &value).await
     }

@@ -3,7 +3,7 @@ use crate::api::responses::{LoginResponse, RefreshResponse, RegistrationResponse
 use crate::api::utils::errors::ServiceError;
 use crate::api::utils::types::{Response, ServiceResult};
 use crate::conditional_return;
-use crate::constants::{PASSWORD_COMPARISON_ERROR, REFRESH_EXPIRATION_TIME};
+use crate::constants::REFRESH_EXPIRATION_TIME;
 use crate::jwt::models::Claims;
 use crate::jwt::token;
 use crate::jwt::token::TokenType;
@@ -41,9 +41,7 @@ pub async fn handle_registration(
         payload.password.clone(),
         payload.device_id.clone(),
     );
-    user.hash_password().map_err(|error| {
-        ServiceError::InternalServerError("Failed to hash password for user".to_string())
-    })?;
+    user.hash_password()?;
 
     redis
         .s_async_set(RedisKey::Account(payload.username.clone()), &user)
@@ -78,9 +76,7 @@ pub async fn handle_login(
     let user = redis
         .d_async_get::<User>(RedisKey::Account(payload.username.clone()))
         .await?;
-    let valid = user
-        .verify_password(payload.password.clone())
-        .map_err(|_| PASSWORD_COMPARISON_ERROR)?;
+    let valid = user.verify_password(payload.password.clone())?;
 
     conditional_return!(
         !valid,

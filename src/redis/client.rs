@@ -1,8 +1,8 @@
+use crate::api::utils::types::ServiceResult;
+use crate::constants::{DESERIALIZATION_ERROR, REDIS_ERROR, SERIALIZATION_ERROR};
 use redis::FromRedisValue;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
-use crate::api::utils::types::ServiceResult;
-use crate::constants::{REDIS_ERROR, SERIALIZATION_ERROR, DESERIALIZATION_ERROR};
 
 pub struct RedisClient {
     pub client: redis::Client,
@@ -30,7 +30,10 @@ impl RedisClient {
             .map_err(|error| anyhow::anyhow!(error))
     }
 
-    pub async fn execute_async_raw<T: FromRedisValue>(&self, cmd: &mut redis::Cmd) -> Result<T, anyhow::Error> {
+    pub async fn execute_async_raw<T: FromRedisValue>(
+        &self,
+        cmd: &mut redis::Cmd,
+    ) -> Result<T, anyhow::Error> {
         let mut connection = self
             .client
             .get_async_connection()
@@ -94,7 +97,11 @@ impl RedisClient {
         self.set(key, &value)
     }
 
-    pub async fn s_async_set<T: Serialize>(&self, key: RedisKey, value: &T) -> ServiceResult<String> {
+    pub async fn s_async_set<T: Serialize>(
+        &self,
+        key: RedisKey,
+        value: &T,
+    ) -> ServiceResult<String> {
         let value = serde_json::to_string(value).map_err(|_| SERIALIZATION_ERROR)?;
 
         self.async_set(key, &value).await
@@ -142,7 +149,9 @@ impl Display for RedisKey {
             RedisKey::Base => write!(f, "doc_storage"),
             RedisKey::Account(username) => write!(f, "{}:account:{}", RedisKey::Base, username),
             RedisKey::Session(username) => write!(f, "{}:session:{}", RedisKey::Base, username),
-            RedisKey::SessionBlackList(token) => write!(f, "{}:session:blacklist:{}", RedisKey::Base, token),
+            RedisKey::SessionBlackList(token) => {
+                write!(f, "{}:session:blacklist:{}", RedisKey::Base, token)
+            }
             RedisKey::Other(key) => write!(f, "{}:{}", RedisKey::Base, key),
         }
     }

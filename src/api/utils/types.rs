@@ -1,7 +1,7 @@
+use crate::api::utils::errors::ServiceError;
 use actix_web::http::StatusCode;
 use actix_web::HttpResponse;
 use serde::Serialize;
-use crate::api::utils::errors::ServiceError;
 
 pub type AccessToken = String;
 pub type RefreshToken = String;

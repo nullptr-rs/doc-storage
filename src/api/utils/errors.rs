@@ -48,7 +48,8 @@ impl ResponseError for ServiceError {
         match self {
             ServiceError::InternalServerError(_) => {
                 log::error!("{}", self);
-                Response::<()>::new(StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into()
+                Response::<()>::new(StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
+                    .into()
             }
             ServiceError::BadRequest(message) => {
                 let message = format!("Bad request: {}", message);

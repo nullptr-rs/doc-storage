@@ -1,12 +1,15 @@
 use crate::api::utils::errors::ServiceError;
-use crate::constants::{DECODING_KEY, ENCODING_KEY, EXPIRATION_TIME, HEADER, REFRESH_DECODING_KEY, REFRESH_ENCODING_KEY, REFRESH_EXPIRATION_TIME, TOKEN_GENERATION_ERROR, VALIDATION};
+use crate::api::utils::types::{AccessToken, RefreshToken, ServiceResult};
+use crate::constants::{
+    DECODING_KEY, ENCODING_KEY, EXPIRATION_TIME, HEADER, REFRESH_DECODING_KEY,
+    REFRESH_ENCODING_KEY, REFRESH_EXPIRATION_TIME, TOKEN_GENERATION_ERROR, VALIDATION,
+};
 use crate::jwt::models::Claims;
 use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{DecodingKey, EncodingKey};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use uuid::Uuid;
-use crate::api::utils::types::{AccessToken, RefreshToken, ServiceResult};
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TokenType {
@@ -82,8 +85,8 @@ pub fn from_claims(claims: &Claims) -> ServiceResult<String> {
 pub fn decode_token(token: &str, token_type: TokenType) -> ServiceResult<Claims> {
     let decoding_key = token_type.get_decoding_key();
 
-    let result = jsonwebtoken::decode::<Claims>(token, decoding_key, &VALIDATION)
-        .map(|data| data.claims);
+    let result =
+        jsonwebtoken::decode::<Claims>(token, decoding_key, &VALIDATION).map(|data| data.claims);
 
     result.map_err(|error| {
         let error = error.into_kind();

@@ -1,4 +1,5 @@
 use crate::api::utils::errors::ServiceError;
+use crate::api::utils::types::AccessToken;
 use crate::conditional_return;
 use crate::constants::{BASE_ROUTE, IGNORED_AUTH_ROUTES};
 use crate::jwt::token;
@@ -12,7 +13,6 @@ use futures::future::{ready, Future, Ready};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
-use crate::api::utils::types::AccessToken;
 
 pub struct AuthenticationMiddleware;
 pub struct AuthenticationMiddlewareService<S> {

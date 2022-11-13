@@ -1,5 +1,5 @@
-use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use crate::api::utils::errors::ServiceError;
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation};
 
 pub const BASE_ROUTE: &str = "/api/v1";
 pub const IGNORED_AUTH_ROUTES: [&str; 3] = ["auth/register", "auth/login", "auth/refresh"];

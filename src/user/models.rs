@@ -1,6 +1,6 @@
+use crate::api::utils::types::ServiceResult;
 use crate::user::password;
 use serde::{Deserialize, Serialize};
-use crate::api::utils::types::ServiceResult;
 
 #[derive(Serialize, Deserialize)]
 pub struct User {

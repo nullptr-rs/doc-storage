@@ -21,7 +21,7 @@ argon2 = "0.4.1"
 env_logger = "0.9.3"
 log = "0.4.17"
 jsonwebtoken = "8.1.1"
-chrono = "0.4.22"
+chrono = "0.4.23"
 lazy_static = "1.4.0"
 
 [dependencies.tokio]

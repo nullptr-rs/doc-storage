@@ -1,5 +1,5 @@
 pub mod api;
-pub mod constants;
+pub mod auth;
 pub mod jwt;
 pub mod middleware;
 pub mod redis;

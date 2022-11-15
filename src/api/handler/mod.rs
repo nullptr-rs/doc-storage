@@ -1,3 +1,3 @@
-pub mod authentication;
+pub mod auth;
 pub mod endpoints;
 pub mod upload;

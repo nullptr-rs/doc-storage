@@ -18,6 +18,13 @@ impl User {
         }
     }
 
+    pub fn new_hashed(username: String, password: String, device_id: String) -> ServiceResult<Self> {
+        let mut user = Self::new(username, password, device_id);
+        user.hash_password()?;
+
+        Ok(user)
+    }
+
     pub fn hash_password(&mut self) -> ServiceResult<()> {
         self.password = password::hash_password(&self.password)?;
         Ok(())

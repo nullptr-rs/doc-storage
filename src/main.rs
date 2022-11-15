@@ -9,6 +9,9 @@ use std::env;
 use std::sync::Arc;
 use tokio::runtime::Builder;
 
+pub const BASE_ROUTE: &str = "/api/v1";
+pub const IGNORED_AUTH_ROUTES: [&str; 3] = ["auth/register", "auth/login", "auth/refresh"];
+
 fn main() -> std::io::Result<()> {
     env::set_var("RUST_LOG", "debug");
     env_logger::init();

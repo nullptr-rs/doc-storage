@@ -13,29 +13,9 @@ pub enum ServiceError {
     ExpiredToken,
 }
 
-impl ServiceError {
-    pub fn redis_query() -> Self {
-        ServiceError::InternalServerError("Failed to query the database".to_string())
-    }
-
-    pub fn serialization() -> Self {
-        ServiceError::InternalServerError("Failed to serialize the data".to_string())
-    }
-
-    pub fn deserialization() -> Self {
-        ServiceError::InternalServerError("Failed to deserialize the data".to_string())
-    }
-
-    pub fn token_generation() -> Self {
-        ServiceError::InternalServerError("Failed to generate the token".to_string())
-    }
-
-    pub fn password_hashing() -> Self {
-        ServiceError::InternalServerError("Failed to hash the password".to_string())
-    }
-
-    pub fn password_comparison() -> Self {
-        ServiceError::InternalServerError("Failed to compare passwords".to_string())
+impl From<String> for ServiceError {
+    fn from(error: String) -> Self {
+        ServiceError::BadRequest(error)
     }
 }
 

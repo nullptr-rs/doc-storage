@@ -142,7 +142,6 @@ pub enum RedisKey {
     Base,
     Account(String),
     Session(String),
-    SessionBlackList(String),
     Other(String),
 }
 
@@ -152,9 +151,6 @@ impl Display for RedisKey {
             RedisKey::Base => write!(f, "doc_storage"),
             RedisKey::Account(username) => write!(f, "{}:account:{}", RedisKey::Base, username),
             RedisKey::Session(username) => write!(f, "{}:session:{}", RedisKey::Base, username),
-            RedisKey::SessionBlackList(token) => {
-                write!(f, "{}:session:blacklist:{}", RedisKey::Base, token)
-            }
             RedisKey::Other(key) => write!(f, "{}:{}", RedisKey::Base, key),
         }
     }

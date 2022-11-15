@@ -5,6 +5,7 @@ use serde::Serialize;
 
 pub type AccessToken = String;
 pub type RefreshToken = String;
+pub type AuthTokens = (AccessToken, RefreshToken);
 pub type ServiceResult<T> = Result<T, ServiceError>;
 
 #[derive(Serialize)]

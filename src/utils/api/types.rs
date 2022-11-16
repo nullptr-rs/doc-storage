@@ -1,14 +1,8 @@
-use crate::api::utils::errors::ServiceError;
 use actix_web::http::StatusCode;
 use actix_web::HttpResponse;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-pub type AccessToken = String;
-pub type RefreshToken = String;
-pub type AuthTokens = (AccessToken, RefreshToken);
-pub type ServiceResult<T> = Result<T, ServiceError>;
-
-#[derive(Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Response<T> {
     pub status: u16,
     pub message: String,

@@ -1,10 +1,10 @@
-use crate::api::utils::errors::ServiceError;
-use crate::api::utils::types::AccessToken;
-use crate::conditional_return;
+use crate::conditional;
 use crate::constants::{BASE_ROUTE, IGNORED_AUTH_ROUTES};
-use crate::jwt::token;
-use crate::jwt::token::TokenType;
-use crate::redis::client::{RedisClient, RedisKey};
+use crate::redis::client::RedisClient;
+use crate::user::session::models::SessionClaims;
+use crate::user::session::token;
+use crate::utils::api::errors::ServiceError;
+use crate::utils::traits::RedisStorable;
 use actix_web::body::MessageBody;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::web::Data;
@@ -62,34 +62,37 @@ where
     fn call(&self, req: ServiceRequest) -> Self::Future {
         if self.check_required_auth(&req) {
             let auth_header = req.headers().get("Authorization");
-            conditional_return!(
+            conditional!(
                 auth_header.is_none(),
-                self.failure(ServiceError::MissingToken)
+                return self.failure(ServiceError::MissingToken)
             );
 
             let auth_header = auth_header.unwrap().to_str().unwrap();
-            conditional_return!(
+            conditional!(
                 auth_header.is_empty() || !auth_header.starts_with("Bearer"),
-                self.failure(ServiceError::MissingToken)
+                return self.failure(ServiceError::MissingToken)
             );
 
-            let token: AccessToken = auth_header.replace("Bearer: ", "");
-            conditional_return!(token.is_empty(), self.failure(ServiceError::MissingToken));
+            let token = auth_header.replace("Bearer ", "");
+            conditional!(
+                token.is_empty(),
+                return self.failure(ServiceError::MissingToken)
+            );
 
-            let validation = token::decode_token(&token, TokenType::AccessToken);
-            conditional_return!(validation.is_err(), self.failure(validation.err().unwrap()));
+            let validation = token::decode_access_token(token.clone());
+            conditional!(
+                validation.is_err(),
+                return self.failure(validation.err().unwrap())
+            );
 
             let validation = validation.unwrap();
 
             let redis = req.app_data::<Data<Arc<RedisClient>>>().unwrap();
-            let is_blacklisted = redis.exists(RedisKey::SessionBlackList(validation.jti.clone()));
-            conditional_return!(
-                is_blacklisted.is_err(),
-                self.failure(is_blacklisted.err().unwrap())
-            );
+            let exists = SessionClaims::exists(validation.jti.clone(), redis.get_ref().clone());
+            conditional!(exists.is_err(), return self.failure(exists.err().unwrap()));
 
-            let is_blacklisted = is_blacklisted.unwrap();
-            conditional_return!(is_blacklisted, self.failure(ServiceError::InvalidToken));
+            let exists = exists.unwrap();
+            conditional!(!exists, return self.failure(ServiceError::InvalidToken));
 
             req.extensions_mut().insert(token.clone());
             req.extensions_mut().insert(validation);

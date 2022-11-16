@@ -1,4 +1,4 @@
-use crate::api::utils::types::Response;
+use crate::utils::api::types::Response;
 use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError};
 use std::fmt::{Debug, Display, Formatter};

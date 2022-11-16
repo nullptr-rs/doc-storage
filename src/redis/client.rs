@@ -1,5 +1,5 @@
-use crate::api::utils::errors::ServiceError;
-use crate::api::utils::types::ServiceResult;
+use crate::utils::api::errors::ServiceError;
+use crate::utils::types::ServiceResult;
 use redis::FromRedisValue;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
@@ -47,13 +47,13 @@ impl RedisClient {
 
     pub fn execute<T: FromRedisValue>(&self, cmd: &mut redis::Cmd) -> ServiceResult<T> {
         self.execute_raw(cmd)
-            .map_err(|_| ServiceError::redis_query())
+            .map_err(|_| ServiceError::InternalServerError("Failed to query database".to_string()))
     }
 
     pub async fn execute_async<T: FromRedisValue>(&self, cmd: &mut redis::Cmd) -> ServiceResult<T> {
         self.execute_async_raw(cmd)
             .await
-            .map_err(|_| ServiceError::redis_query())
+            .map_err(|_| ServiceError::InternalServerError("Failed to query database".to_string()))
     }
 
     pub fn get(&self, key: RedisKey) -> ServiceResult<String> {
@@ -68,13 +68,17 @@ impl RedisClient {
     pub fn d_get<T: for<'a> Deserialize<'a>>(&self, key: RedisKey) -> ServiceResult<T> {
         let value = self.get(key)?;
 
-        serde_json::from_str(&value).map_err(|_| ServiceError::deserialization())
+        serde_json::from_str(&value).map_err(|_| {
+            ServiceError::InternalServerError("Failed to deserialize data".to_string())
+        })
     }
 
     pub async fn d_async_get<T: for<'a> Deserialize<'a>>(&self, key: RedisKey) -> ServiceResult<T> {
         let value = self.async_get(key).await?;
 
-        serde_json::from_str(&value).map_err(|_| ServiceError::deserialization())
+        serde_json::from_str(&value).map_err(|_| {
+            ServiceError::InternalServerError("Failed to deserialize data".to_string())
+        })
     }
 
     pub fn set(&self, key: RedisKey, value: &str) -> ServiceResult<String> {
@@ -95,7 +99,9 @@ impl RedisClient {
     }
 
     pub fn s_set<T: Serialize>(&self, key: RedisKey, value: &T) -> ServiceResult<String> {
-        let value = serde_json::to_string(value).map_err(|_| ServiceError::serialization())?;
+        let value = serde_json::to_string(value).map_err(|_| {
+            ServiceError::InternalServerError("Failed to serialize data".to_string())
+        })?;
 
         self.set(key, &value)
     }
@@ -105,7 +111,9 @@ impl RedisClient {
         key: RedisKey,
         value: &T,
     ) -> ServiceResult<String> {
-        let value = serde_json::to_string(value).map_err(|_| ServiceError::serialization())?;
+        let value = serde_json::to_string(value).map_err(|_| {
+            ServiceError::InternalServerError("Failed to serialize data".to_string())
+        })?;
 
         self.async_set(key, &value).await
     }
@@ -140,8 +148,9 @@ impl RedisClient {
 
 pub enum RedisKey {
     Base,
-    Account(String),
+    User(String),
     Session(String),
+    SessionRefresh(String),
     Other(String),
 }
 
@@ -149,8 +158,11 @@ impl Display for RedisKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             RedisKey::Base => write!(f, "doc_storage"),
-            RedisKey::Account(username) => write!(f, "{}:account:{}", RedisKey::Base, username),
+            RedisKey::User(username) => write!(f, "{}:user:{}", RedisKey::Base, username),
             RedisKey::Session(username) => write!(f, "{}:session:{}", RedisKey::Base, username),
+            RedisKey::SessionRefresh(username) => {
+                write!(f, "{}:session:refresh:{}", RedisKey::Base, username)
+            }
             RedisKey::Other(key) => write!(f, "{}:{}", RedisKey::Base, key),
         }
     }

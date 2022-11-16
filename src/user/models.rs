@@ -1,8 +1,11 @@
-use crate::api::utils::types::ServiceResult;
+use crate::redis::client::RedisKey;
 use crate::user::password;
+use crate::utils::traits::RedisStorable;
+use crate::utils::types::ServiceResult;
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct User {
     pub username: String,
     pub password: String,
@@ -18,7 +21,11 @@ impl User {
         }
     }
 
-    pub fn new_hashed(username: String, password: String, device_id: String) -> ServiceResult<Self> {
+    pub fn new_hashed(
+        username: String,
+        password: String,
+        device_id: String,
+    ) -> ServiceResult<Self> {
         let mut user = Self::new(username, password, device_id);
         user.hash_password()?;
 
@@ -32,5 +39,16 @@ impl User {
 
     pub fn verify_password(&self, password: String) -> ServiceResult<bool> {
         password::verify_password(password, self.password.clone())
+    }
+}
+
+#[async_trait]
+impl RedisStorable<User> for User {
+    fn key(key: String) -> RedisKey {
+        RedisKey::User(key)
+    }
+
+    fn self_key(&self) -> RedisKey {
+        RedisKey::User(self.username.clone())
     }
 }

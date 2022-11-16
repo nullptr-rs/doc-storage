@@ -1,77 +1,90 @@
-use std::sync::Arc;
-use crate::api::payloads::{LoginPayload, RefreshPayload, RegistrationPayload};
-use crate::api::utils::errors::ServiceError;
-use crate::api::utils::types::{AccessToken, AuthTokens, RefreshToken, ServiceResult};
 use crate::conditional;
-use crate::jwt::models::Claims;
-use crate::jwt::token;
-use crate::jwt::token::{REFRESH_EXPIRATION_TIME, TokenType};
-use crate::redis::client::{RedisClient, RedisKey};
+use crate::redis::client::RedisClient;
+use crate::user::api::payloads::{LoginPayload, RefreshPayload, RegistrationPayload};
 use crate::user::models::User;
+use crate::user::session::models::{AuthenticationTokens, SessionClaims, SessionRefreshClaims};
+use crate::user::session::token;
+use crate::utils::api::errors::ServiceError;
+use crate::utils::traits::RedisStorable;
+use crate::utils::types::ServiceResult;
+use std::sync::Arc;
 
-pub async fn register_user(payload: RegistrationPayload, redis: Arc<RedisClient>) -> ServiceResult<User> {
-    let exists = redis
-        .async_exists(RedisKey::Account(payload.username.clone()))
-        .await?;
+pub async fn register_user(
+    payload: RegistrationPayload,
+    redis: Arc<RedisClient>,
+) -> ServiceResult<User> {
+    let exists = User::exists_async(payload.username.clone(), redis.clone()).await?;
+    conditional!(
+        exists,
+        return Err("An account with that username already exists."
+            .to_string()
+            .into())
+    );
 
-    conditional!(exists, return Err("An account with that username already exists.".to_string()));
-
-    let user = User::new_hashed(
-        payload.username,
-        payload.password,
-        payload.device_id,
-    )?;
-
-    redis
-        .s_async_set(RedisKey::Account(user.username.clone()), &user)
-        .await?;
+    let user = User::new_hashed(payload.username, payload.password, payload.device_id)?;
+    user.save_async(redis).await?;
 
     Ok(user)
 }
 
-pub async fn login_user(payload: LoginPayload, redis: Arc<RedisClient>) -> ServiceResult<AuthTokens> {
-    let exists = redis
-        .async_exists(RedisKey::Account(payload.username.clone()))
-        .await?;
+pub async fn login_user(
+    payload: LoginPayload,
+    redis: Arc<RedisClient>,
+) -> ServiceResult<AuthenticationTokens> {
+    let exists = User::exists_async(payload.username.clone(), redis.clone()).await?;
+    conditional!(
+        exists,
+        return Err("An account with that username does not exist."
+            .to_string()
+            .into())
+    );
 
-    conditional!(exists, return Err("An account with that username does not exist.".to_string()));
-
-    let user = redis
-        .d_async_get::<User>(RedisKey::Account(payload.username.clone()))
-        .await?;
+    let user = User::fetch_async(payload.username.clone(), redis.clone()).await?;
     let valid = user.verify_password(payload.password.clone())?;
+    conditional!(valid, return Err("Invalid password".to_string().into()));
 
-    conditional!(valid, return Err("Invalid password".to_string()));
+    let tokens = token::create_tokens(payload.username.clone(), payload.device_id.clone())?;
+    tokens.save_async(redis.clone()).await?;
 
-    let (access_token, refresh_token) =
-        token::create_login_tokens(payload.username.clone(), payload.device_id.clone())?;
-
-    Ok((access_token, refresh_token))
+    Ok(tokens)
 }
 
-pub async fn refresh_user(payload: RefreshPayload, redis: Arc<RedisClient>) -> ServiceResult<AuthTokens> {
-    let claims = token::decode_token(&payload.refresh_token, TokenType::RefreshToken)
-        .map_err(|_| ServiceError::InvalidToken)?;
+pub async fn refresh_user(
+    payload: RefreshPayload,
+    redis: Arc<RedisClient>,
+) -> ServiceResult<AuthenticationTokens> {
+    let claims = token::decode_refresh_token(payload.refresh_token.clone())?;
 
-    let exists = redis.exists(RedisKey::Session(claims.jti.clone()))?;
+    let exists = SessionRefreshClaims::exists_async(claims.jti.clone(), redis.clone()).await?;
     conditional!(!exists, return Err(ServiceError::InvalidToken));
 
-    let (access_token, refresh_token) =
-        token::create_login_tokens(claims.username.clone(), claims.device_id.clone())?;
+    let access_exists =
+        SessionClaims::exists_async(claims.access_token_jti.clone(), redis.clone()).await?;
+    conditional!(!access_exists, return Err(ServiceError::InvalidToken));
 
-    Ok(access_token)
+    let session_claims =
+        SessionRefreshClaims::fetch_async(claims.access_token_jti.clone(), redis.clone()).await?;
+
+    session_claims.delete_async(redis.clone()).await?;
+    claims.delete_async(redis.clone()).await?;
+
+    let tokens = token::create_tokens(
+        session_claims.username.clone(),
+        session_claims.device_id.clone(),
+    )?;
+    tokens.save_async(redis.clone()).await?;
+
+    Ok(tokens)
 }
 
-pub async fn logout_user(claims: Claims, redis: Arc<RedisClient>) -> ServiceResult<()> {
-    redis
-        .async_set(RedisKey::SessionBlackList(claims.jti.clone()), "true")
-        .await?;
-    redis
-        .async_expire(
-            RedisKey::SessionBlackList(claims.jti.clone()),
-            REFRESH_EXPIRATION_TIME,
-        )
-        .await?;
+pub async fn logout_user(claims: SessionClaims, redis: Arc<RedisClient>) -> ServiceResult<()> {
+    let exists = SessionClaims::exists_async(claims.jti.clone(), redis.clone()).await?;
+    conditional!(!exists, return Err(ServiceError::InvalidToken));
+
+    let refresh_claims = SessionClaims::fetch_async(claims.jti.clone(), redis.clone()).await?;
+
+    claims.delete_async(redis.clone()).await?;
+    refresh_claims.delete_async(redis.clone()).await?;
 
     Ok(())
 }

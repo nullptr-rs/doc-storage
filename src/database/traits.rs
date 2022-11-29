@@ -1,8 +1,12 @@
-use crate::redis::client::{RedisClient, RedisKey};
-use crate::utils::types::ServiceResult;
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+
+use crate::{
+    database::redis::{RedisClient, RedisKey},
+    utils::types::ServiceResult,
+};
 
 #[async_trait]
 pub trait RedisStorable<T: Sized + Sync + Send + Serialize + for<'a> Deserialize<'a>> {
@@ -33,32 +37,12 @@ pub trait RedisStorable<T: Sized + Sync + Send + Serialize + for<'a> Deserialize
         Ok(())
     }
 
-    fn save_other(&self, data: &T, redis: Arc<RedisClient>) -> ServiceResult<()>
-    where
-        Self: Sized + Serialize,
-    {
-        let redis_key = self.self_key();
-        redis.s_set(redis_key, data)?;
-
-        Ok(())
-    }
-
     async fn save_async(&self, redis: Arc<RedisClient>) -> ServiceResult<()>
     where
         Self: Sized + Serialize,
     {
         let redis_key = self.self_key();
         redis.s_async_set(redis_key, self).await?;
-
-        Ok(())
-    }
-
-    async fn save_other_async(&self, data: &T, redis: Arc<RedisClient>) -> ServiceResult<()>
-    where
-        Self: Sized + Serialize,
-    {
-        let redis_key = self.self_key();
-        redis.s_async_set(redis_key, data).await?;
 
         Ok(())
     }

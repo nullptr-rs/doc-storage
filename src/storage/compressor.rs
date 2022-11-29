@@ -1,6 +1,9 @@
-use flate2::write::{ZlibDecoder, ZlibEncoder};
-use flate2::Compression;
 use std::io::Write;
+
+use flate2::{
+    write::{ZlibDecoder, ZlibEncoder},
+    Compression,
+};
 
 pub async fn compress_data(data: Vec<u8>) -> Result<Vec<u8>, anyhow::Error> {
     let mut encoder = ZlibEncoder::new(Vec::new(), Compression::best());

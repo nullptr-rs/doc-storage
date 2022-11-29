@@ -1,15 +1,16 @@
-use actix_web::middleware::{Compress, Logger};
-use actix_web::rt::System;
-use actix_web::web::Data;
-use actix_web::{App, HttpServer, Scope};
-use doc_storage::middleware::auth::AuthenticationMiddleware;
-use doc_storage::redis::client::RedisClient;
-use doc_storage::user;
-use std::env;
-use std::sync::Arc;
+use std::{env, sync::Arc};
+
+use actix_web::{
+    middleware::{Compress, Logger, NormalizePath, TrailingSlash},
+    rt::System,
+    web::Data,
+    App, HttpServer, Scope,
+};
+use doc_storage::database::redis::RedisClient;
 use tokio::runtime::Builder;
 
 fn main() -> std::io::Result<()> {
+    //TODO Configure logger format, use unstable feature inspect_err on result
     env::set_var("RUST_LOG", "debug");
     env_logger::init();
 
@@ -39,7 +40,10 @@ async fn async_bootstrap(worker_threads: usize) -> std::io::Result<()> {
     let redis_host = env::var("REDIS_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let redis_port = env::var("REDIS_PORT").unwrap_or_else(|_| "6379".to_string());
     let redis_password = env::var("REDIS_PASSWORD").unwrap_or_else(|_| "nullptr-rs".to_string());
-    let redis_address = format!("redis://:{}@{}:{}", redis_password, redis_host, redis_port);
+    let redis_address = format!(
+        "database://:{}@{}:{}",
+        redis_password, redis_host, redis_port
+    );
 
     let redis = Arc::new(
         RedisClient::new(redis_address).expect("Failed to connect to Redis. Is it running?"),
@@ -51,12 +55,9 @@ async fn async_bootstrap(worker_threads: usize) -> std::io::Result<()> {
         App::new()
             .wrap(Logger::default())
             .wrap(Compress::default())
-            .wrap(AuthenticationMiddleware::new())
+            .wrap(NormalizePath::new(TrailingSlash::Trim))
             .app_data(Data::new(redis.clone()))
-            .service(
-                Scope::new("/api")
-                    .service(Scope::new("/v1").service(user::api::handlers::register_endpoints())),
-            )
+            .service(Scope::new("/api"))
     })
     .workers(worker_threads)
     .bind(address)?

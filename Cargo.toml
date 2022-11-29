@@ -23,6 +23,8 @@ log = "0.4.17"
 jsonwebtoken = "8.1.1"
 chrono = "0.4.23"
 lazy_static = "1.4.0"
+oxide-auth = "0.5.3"
+serde_urlencoded = "0.7.1"
 
 [dependencies.tokio]
 version = "1.21.2"

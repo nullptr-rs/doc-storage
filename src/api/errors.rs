@@ -1,21 +1,27 @@
-use crate::utils::api::types::Response;
-use actix_web::http::StatusCode;
-use actix_web::{HttpResponse, ResponseError};
 use std::fmt::{Debug, Display, Formatter};
 
+use actix_web::{http::StatusCode, HttpResponse, ResponseError};
+use serde::{Deserialize, Serialize};
+
+use crate::api::responses::Response;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServiceError {
     InternalServerError(String),
     BadRequest(String),
     NotFound(String),
-
-    MissingToken,
-    InvalidToken,
-    ExpiredToken,
+    Unauthorized,
 }
 
 impl From<String> for ServiceError {
     fn from(error: String) -> Self {
         ServiceError::BadRequest(error)
+    }
+}
+
+impl<'a> From<&'a str> for ServiceError {
+    fn from(error: &'a str) -> Self {
+        ServiceError::BadRequest(error.to_string())
     }
 }
 
@@ -27,16 +33,8 @@ impl Display for ServiceError {
             }
             ServiceError::BadRequest(message) => write!(f, "Bad request: {}", message),
             ServiceError::NotFound(message) => write!(f, "Resource not found: {}", message),
-            ServiceError::MissingToken => write!(f, "Missing token header"),
-            ServiceError::InvalidToken => write!(f, "Invalid token"),
-            ServiceError::ExpiredToken => write!(f, "Expired token, please refresh it"),
+            ServiceError::Unauthorized => write!(f, "Unauthorized"),
         }
-    }
-}
-
-impl Debug for ServiceError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self)
     }
 }
 
@@ -65,15 +63,8 @@ impl ResponseError for ServiceError {
                 let message = format!("Resource not found: {}", message);
                 Response::<()>::new(StatusCode::NOT_FOUND, &message).into()
             }
-            ServiceError::MissingToken => {
-                Response::<()>::new(StatusCode::UNAUTHORIZED, "Missing token header").into()
-            }
-            ServiceError::InvalidToken => {
-                Response::<()>::new(StatusCode::UNAUTHORIZED, "Invalid token").into()
-            }
-            ServiceError::ExpiredToken => {
-                Response::<()>::new(StatusCode::UNAUTHORIZED, "Expired token, please refresh it")
-                    .into()
+            ServiceError::Unauthorized => {
+                Response::<()>::new(StatusCode::UNAUTHORIZED, "Unauthorized").into()
             }
         }
     }

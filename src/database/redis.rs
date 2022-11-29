@@ -1,8 +1,9 @@
-use crate::utils::api::errors::ServiceError;
-use crate::utils::types::ServiceResult;
+use std::fmt::Display;
+
 use redis::FromRedisValue;
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
+
+use crate::{api::errors::ServiceError, utils::types::ServiceResult};
 
 pub struct RedisClient {
     pub client: redis::Client,
@@ -146,6 +147,7 @@ impl RedisClient {
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum RedisKey {
     Base,
     User(String),

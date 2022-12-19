@@ -29,7 +29,7 @@ version = "1.22.0"
 features = ["full"]
 
 [dependencies.serde]
-version = "1.0.147"
+version = "1.0.151"
 features = ["derive"]
 
 [dependencies.blake3]
